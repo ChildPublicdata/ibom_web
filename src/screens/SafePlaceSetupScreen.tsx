@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { SetupMap } from '@/components/SetupMap'
+import { SetupHeader } from '@/components/SetupHeader'
 import type { KakaoMapCoordinate } from '@/components/KakaoMap'
 import { useAppStore } from '@/store/useAppStore'
 
@@ -27,20 +28,10 @@ export function SafePlaceSetupScreen() {
 
   return (
     <main className="relative flex min-h-[100svh] w-full max-w-[390px] flex-col overflow-hidden bg-white">
-      <header className="relative z-10 bg-white px-5 pb-3 pt-12">
-        <div className="flex items-center justify-between">
-          <span className="text-sm">‹</span>
-          <div>
-            <h1 className="text-base font-bold">안전장소</h1>
-            <p className="mt-1 text-[11px] text-slate-400">
-              지도를 눌러 장소를 추가하세요.
-            </p>
-          </div>
-          <button type="button" className="text-lg text-slate-500">
-            ×
-          </button>
-        </div>
-      </header>
+      <SetupHeader
+        title="안전장소"
+        description="지도를 눌러 장소를 추가하세요."
+      />
       <section className="min-h-0 flex-1">
         <SetupMap
           selectedPosition={selectedPosition ?? undefined}
@@ -48,7 +39,7 @@ export function SafePlaceSetupScreen() {
           showPin={Boolean(selectedPosition)}
         />
       </section>
-      <BottomNavigation />
+      <BottomNavigation highlighted={showGuide} />
 
       {sheetState === 'collapsed' && (
         <button
@@ -109,7 +100,7 @@ export function SafePlaceSetupScreen() {
 
       {showGuide && (
         <div
-          className="absolute inset-0 z-20 flex flex-col bg-black/70 px-8 pb-7 pt-32 text-white"
+          className="absolute inset-0 z-20 flex flex-col bg-black/70 px-8 pb-24 pt-32 text-white"
           onClick={() => setShowGuide(false)}
         >
           <div>
@@ -134,7 +125,6 @@ export function SafePlaceSetupScreen() {
               대한 데이터를 확인할 수 있어요
             </p>
           </div>
-          <BottomNavigation className="mt-6 rounded-2xl border-0" />
         </div>
       )}
     </main>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import homeMarkerIcon from '@/assets/icons/home-marker.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { SetupMap } from '@/components/SetupMap'
+import { SetupHeader } from '@/components/SetupHeader'
 import { useAppStore } from '@/store/useAppStore'
 
 export function SafeZoneSetupScreen() {
@@ -15,20 +16,7 @@ export function SafeZoneSetupScreen() {
 
   return (
     <main className="relative flex min-h-[100svh] w-full max-w-[390px] flex-col overflow-hidden bg-white">
-      <header className="relative z-10 bg-white px-5 pb-3 pt-12">
-        <div className="flex items-center justify-between">
-          <span className="text-sm">‹</span>
-          <div>
-            <h1 className="text-base font-bold">안전구역</h1>
-            <p className="mt-1 text-[11px] text-slate-400">
-              구역의 범위를 설정하세요.
-            </p>
-          </div>
-          <button type="button" className="text-lg text-slate-500">
-            ×
-          </button>
-        </div>
-      </header>
+      <SetupHeader title="안전구역" description="구역의 범위를 설정하세요." />
       <section className="min-h-0 flex-1">
         <SetupMap
           circleRadius={radius}
@@ -76,10 +64,10 @@ export function SafeZoneSetupScreen() {
           보호구역 저장
         </button>
       </section>
-      <BottomNavigation />
+      <BottomNavigation highlighted={showGuide} />
       {showGuide && (
         <div
-          className="absolute inset-0 z-20 flex flex-col bg-black/70 px-7 pb-7 pt-32 text-white"
+          className="absolute inset-0 z-20 flex flex-col bg-black/70 px-7 pb-24 pt-32 text-white"
           onClick={() => setShowGuide(false)}
         >
           <p className="text-lg font-bold">
@@ -99,7 +87,6 @@ export function SafeZoneSetupScreen() {
           >
             반경 설정하기
           </button>
-          <BottomNavigation className="mt-6 rounded-2xl border-0" />
         </div>
       )}
       {isComplete && (
