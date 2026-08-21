@@ -1,16 +1,20 @@
+import homeIcon from '@/assets/icons/home.svg'
+import menuIcon from '@/assets/icons/menu.svg'
+import safeZoneIcon from '@/assets/icons/safe-zone.svg'
+
 type BottomNavigationProps = { className?: string; highlighted?: boolean }
 
 function NavigationItems() {
   return (
     <>
-      <span className="flex flex-col items-center gap-1">
-        <b className="text-2xl font-normal text-[#ff9800]">⌂</b>홈
+      <span className="flex flex-col items-center gap-0.5">
+        <img src={homeIcon} alt="" className="h-8 w-8" />홈
       </span>
-      <span className="flex flex-col items-center gap-1">
-        <b className="text-2xl font-normal text-[#ff9800]">◎</b>안전 구역 모드
+      <span className="flex flex-col items-center gap-0.5">
+        <img src={safeZoneIcon} alt="" className="h-8 w-8" />안전 구역 모드
       </span>
-      <span className="flex flex-col items-center gap-1">
-        <b className="text-2xl font-normal text-[#ff9800]">☰</b>메뉴
+      <span className="flex flex-col items-center gap-0.5">
+        <img src={menuIcon} alt="" className="h-8 w-8" />메뉴
       </span>
     </>
   )

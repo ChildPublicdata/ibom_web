@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import currentLocationIcon from '@/assets/icons/current-location.svg'
+import searchIcon from '@/assets/icons/search.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { SetupMap } from '@/components/SetupMap'
 import { SetupHeader } from '@/components/SetupHeader'
@@ -11,8 +13,8 @@ type SheetState = 'closed' | 'open' | 'collapsed'
 export function SafePlaceSetupScreen() {
   const [showGuide, setShowGuide] = useState(true)
   const [selectedPosition, setSelectedPosition] =
-    useState<KakaoMapCoordinate | null>(null)
-  const [sheetState, setSheetState] = useState<SheetState>('closed')
+    useState<KakaoMapCoordinate | null>({ lat: 37.5665, lng: 126.978 })
+  const [sheetState, setSheetState] = useState<SheetState>('collapsed')
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const pointerStartY = useRef<number | null>(null)
@@ -38,6 +40,16 @@ export function SafePlaceSetupScreen() {
           onClick={selectPlace}
           showPin={Boolean(selectedPosition)}
         />
+        {!showGuide && (
+          <button
+            type="button"
+            onClick={() => navigate('/safe-place-search')}
+            className="absolute left-1/2 top-[165px] z-10 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-[#3b82f6] shadow-md"
+          >
+            <img src={searchIcon} alt="" className="mr-1.5 h-4 w-4" />
+            장소 검색하기
+          </button>
+        )}
       </section>
       <BottomNavigation highlighted={showGuide} />
 
@@ -45,9 +57,10 @@ export function SafePlaceSetupScreen() {
         <button
           onClick={() => setSheetState('open')}
           type="button"
-          className="absolute bottom-[72px] z-10 flex h-14 w-full items-center justify-center rounded-t-2xl bg-white text-xs font-semibold shadow-[0_-5px_18px_rgba(0,0,0,0.12)]"
+          aria-label="장소 정보 입력 열기"
+          className="absolute bottom-[72px] z-10 flex h-10 w-full items-start justify-center rounded-t-[22px] bg-white pt-4 shadow-[0_-5px_18px_rgba(0,0,0,0.08)]"
         >
-          <span className="mr-2 text-lg text-slate-400">—</span> 장소 정보 입력
+          <span className="h-[3px] w-12 rounded-full bg-slate-200" />
         </button>
       )}
       {sheetState === 'open' && (
@@ -100,7 +113,7 @@ export function SafePlaceSetupScreen() {
 
       {showGuide && (
         <div
-          className="absolute inset-0 z-20 flex flex-col bg-black/70 px-8 pb-24 pt-32 text-white"
+          className="absolute inset-0 z-20 flex flex-col bg-black/70 px-8 pb-24 pt-20 text-white"
           onClick={() => setShowGuide(false)}
         >
           <div>
@@ -108,22 +121,49 @@ export function SafePlaceSetupScreen() {
               집, 학교, 학원 등<br />
               <span className="text-[#ffb000]">안전장소</span>를 설정하세요!
             </p>
-            <span className="mt-7 inline-block rounded-full bg-white px-5 py-2 text-xs font-medium text-[#337cf0]">
-              ⌕ 장소 검색하기
+          </div>
+          <div className="absolute left-1/2 top-[165px] -translate-x-1/2">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                navigate('/safe-place-search')
+              }}
+              className="inline-flex items-center whitespace-nowrap rounded-full border-2 border-dashed border-[#ff9800] bg-white px-5 py-2 text-sm font-medium text-[#3b82f6] shadow-md"
+            >
+              <img src={searchIcon} alt="" className="mr-1.5 h-4 w-4" />
+              장소 검색하기
+            </button>
+          </div>
+
+          <svg aria-hidden="true" className="absolute left-[calc(50%-112px)] top-[198px] h-14 w-12 overflow-visible" viewBox="0 0 48 56" fill="none">
+            <path d="M46 3C18 3 10 16 14 40" stroke="#FF9800" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="7 7" />
+            <path d="M8 35L14.5 47L20 34" fill="#FF9800" />
+          </svg>
+          <p className="absolute left-9 top-[257px] text-sm leading-relaxed">
+            <b className="mr-2 text-base">1</b> 장소를 <span className="text-[#ffcf35]">검색</span>해서 찾을 수 있어요
+          </p>
+
+          <div className="absolute left-1/2 top-[44%] -translate-x-1/2 -translate-y-1/2">
+            <span className="grid h-[58px] w-[58px] place-items-center rounded-full border-2 border-dashed border-[#ff9800] bg-white shadow-md">
+              <img src={currentLocationIcon} alt="현재 위치" className="h-11 w-11" />
             </span>
           </div>
-          <div className="mt-auto space-y-16 text-xs leading-relaxed">
-            <p>
-              <b>1</b> 장소를 검색해서 찾을 수 있어요
-            </p>
-            <p>
-              <b>2</b> 실시간으로 나의{' '}
-              <span className="text-[#ffcf35]">현위치</span>를 확인할 수 있어요
-            </p>
-            <p>
-              <b>3</b> <span className="text-[#ffcf35]">안전/위험 구역</span>에
-              대한 데이터를 확인할 수 있어요
-            </p>
+          <svg aria-hidden="true" className="absolute left-[calc(50%+24px)] top-[calc(44%-5px)] h-14 w-14 overflow-visible" viewBox="0 0 56 56" fill="none">
+            <path d="M2 4C34 4 43 16 43 39" stroke="#FF9800" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="7 7" />
+            <path d="M37 35L43 49L49 35" fill="#FF9800" />
+          </svg>
+          <p className="absolute left-10 top-[52%] whitespace-nowrap text-sm leading-relaxed">
+            <b className="mr-2 text-base">2</b> 실시간으로 나의 <span className="text-[#ffcf35]">현위치</span>를 확인할 수 있어요
+          </p>
+
+          <svg aria-hidden="true" className="absolute bottom-[82px] left-9 h-12 w-12 overflow-visible" viewBox="0 0 48 48" fill="none">
+            <path d="M4 45C3 19 12 8 32 7" stroke="#FF9800" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="7 7" />
+            <path d="M26 1L40 6L29 15" fill="#FF9800" />
+          </svg>
+          <div className="absolute bottom-[150px] left-10 right-5 text-sm leading-7">
+            <p><b className="mr-2 text-base">3</b><span className="text-[#ffcf35]">안전/위험 구역에 대한 데이터</span>를 확인할 수 있어요</p>
+            <p className="pl-8">메뉴를 통해 <span className="text-[#ffcf35]">정보를 수정</span>할 수 있어요</p>
           </div>
         </div>
       )}
