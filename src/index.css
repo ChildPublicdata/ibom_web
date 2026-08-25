@@ -5,14 +5,23 @@
 @layer base {
   :root {
     font-family:
-      Inter,
-      system-ui,
+      'Pretendard Variable',
+      Pretendard,
       -apple-system,
       BlinkMacSystemFont,
-      'Segoe UI',
+      system-ui,
       sans-serif;
-    color: #1f2937;
+    color: #404040;
     background: #f8fafc;
+    --color-main-orange: #ff9800;
+    --color-main-yellow: #ffd54f;
+    --color-sub-green: #4f7a4b;
+    --color-sub-leaf: #7dbb6d;
+    --color-sub-mint: #ddefd6;
+    --color-sub-cream: #fff9ee;
+    --color-point-red: #ef5350;
+    --color-point-blue: #3b82f6;
+    --color-point-sky: #74dcff;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -23,7 +32,7 @@
     @apply border-slate-200;
   }
   body {
-    @apply m-0 min-w-[320px] bg-slate-100;
+    @apply m-0 min-w-[320px] bg-neutral-100 font-sans text-neutral-900;
   }
 
   #root {
