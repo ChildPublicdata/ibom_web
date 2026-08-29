@@ -3,7 +3,6 @@ import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import homeMarkerIcon from '@/assets/icons/home-marker.svg'
 import notificationIcon from '@/assets/icons/notification.svg'
-import phoneIcon from '@/assets/icons/phone.svg'
 import childDown from '@/assets/child-motion/child-down.svg'
 import childDownLeft from '@/assets/child-motion/child-down-left.svg'
 import childDownRight from '@/assets/child-motion/child-down-right.svg'
@@ -12,6 +11,7 @@ import childUp from '@/assets/child-motion/child-up.svg'
 import childUpLeft from '@/assets/child-motion/child-up-left.svg'
 import childUpRight from '@/assets/child-motion/child-up-right.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
+import { PhoneCallButton } from '@/components/CallModal'
 import {
   KakaoMap,
   type KakaoMapBounds,
@@ -167,9 +167,7 @@ export function HomeScreen() {
         <div className="flex h-10 items-center justify-between">
           <span className="text-xl tracking-[-0.04em]">LOGO</span>
           <div className="flex items-center gap-4">
-            <button type="button" aria-label="전화 걸기">
-              <img src={phoneIcon} className="h-7 w-7" alt="" />
-            </button>
+            <PhoneCallButton />
             <button type="button" aria-label="알림">
               <img src={notificationIcon} className="h-7 w-7" alt="" />
             </button>

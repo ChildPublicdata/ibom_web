@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import notificationIcon from '@/assets/icons/notification.svg'
-import phoneIcon from '@/assets/icons/phone.svg'
 import searchIcon from '@/assets/icons/search.svg'
+import { PhoneCallButton } from '@/components/CallModal'
 
 const initialRecentPlaces = [
   { id: 1, name: '보문초등학교', date: '08. 07.' },
@@ -24,9 +24,7 @@ export function SafePlaceSearchScreen() {
         <div className="flex h-10 items-center justify-between">
           <span className="text-2xl tracking-[-0.04em]">LOGO</span>
           <div className="flex items-center gap-5">
-            <button type="button" aria-label="전화 걸기">
-              <img src={phoneIcon} alt="" className="h-7 w-7" />
-            </button>
+            <PhoneCallButton />
             <button type="button" aria-label="알림">
               <img src={notificationIcon} alt="" className="h-7 w-7" />
             </button>

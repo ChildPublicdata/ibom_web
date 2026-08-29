@@ -4,10 +4,10 @@ import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import homeMarkerIcon from '@/assets/icons/home-marker.svg'
 import notificationIcon from '@/assets/icons/notification.svg'
-import phoneIcon from '@/assets/icons/phone.svg'
 import riskAreaMarker from '@/assets/icons/risk-area-marker.svg'
 import safeAreaStatusIcon from '@/assets/icons/safe-area-status.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
+import { PhoneCallButton } from '@/components/CallModal'
 import { KakaoMap, type KakaoMapMarker } from '@/components/KakaoMap'
 
 const CHILD_POSITION = { lat: 36.325, lng: 127.4214 }
@@ -60,9 +60,7 @@ export function SafetyAreaScreen() {
         <div className="flex h-10 items-center justify-between">
           <span className="text-xl tracking-[-0.04em]">LOGO</span>
           <div className="flex items-center gap-4">
-            <button type="button" aria-label="전화 걸기">
-              <img src={phoneIcon} className="h-7 w-7" alt="" />
-            </button>
+            <PhoneCallButton />
             <button type="button" aria-label="알림">
               <img src={notificationIcon} className="h-7 w-7" alt="" />
             </button>
