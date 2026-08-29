@@ -34,7 +34,7 @@ export function UserSelectScreen() {
               } border-black/5 hover:-translate-y-0.5`}
               key={role}
               onClick={() =>
-                navigate(role === 'parent' ? '/safe-place-setup' : '/home')
+                navigate(role === 'parent' ? '/child-info' : '/home')
               }
               type="button"
             >

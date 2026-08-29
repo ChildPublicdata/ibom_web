@@ -102,6 +102,7 @@ declare global {
         listener: (event: MouseEvent) => void,
       ): void
       addListener(target: Map, type: 'idle', listener: () => void): void
+      addListener(target: Marker, type: 'click', listener: () => void): void
     }
     function load(callback: () => void): void
   }
@@ -121,6 +122,7 @@ export type KakaoMapMarker = {
   position: KakaoMapCoordinate
   imageUrl?: string
   imageSize?: { width: number; height: number }
+  onClick?: () => void
 }
 
 export type KakaoMapCircle = {
@@ -265,19 +267,24 @@ export function KakaoMap({
     const maps = window.kakao?.maps
     if (!map || !maps) return
 
-    const markerInstances = markers.map(({ position, imageUrl, imageSize }) => {
-      const image = imageUrl
-        ? new maps.MarkerImage(
-            imageUrl,
-            new maps.Size(imageSize?.width ?? 32, imageSize?.height ?? 32),
-          )
-        : undefined
-      return new maps.Marker({
-        map,
-        position: new maps.LatLng(position.lat, position.lng),
-        image,
-      })
-    })
+    const markerInstances = markers.map(
+      ({ position, imageUrl, imageSize, onClick: onMarkerClick }) => {
+        const image = imageUrl
+          ? new maps.MarkerImage(
+              imageUrl,
+              new maps.Size(imageSize?.width ?? 32, imageSize?.height ?? 32),
+            )
+          : undefined
+        const marker = new maps.Marker({
+          map,
+          position: new maps.LatLng(position.lat, position.lng),
+          image,
+        })
+        if (onMarkerClick)
+          maps.event.addListener(marker, 'click', onMarkerClick)
+        return marker
+      },
+    )
     const circleInstance =
       circle &&
       new maps.Circle({
