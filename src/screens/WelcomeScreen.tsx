@@ -3,8 +3,8 @@ import welcomeIllustration from '@/assets/onboarding/welcome-illustration.svg'
 
 export function WelcomeScreen() {
   return (
-    <main className="flex min-h-[100svh] w-full max-w-[390px] flex-col bg-white px-6 pb-5 pt-24">
-      <section className="flex flex-1 flex-col items-center text-center">
+    <main className="relative flex min-h-[100svh] w-full max-w-[390px] flex-col bg-white px-6">
+      <section className="flex flex-1 flex-col items-center justify-center text-center">
         <img
           alt="아이봄 친구들"
           className="w-[182px]"
@@ -20,7 +20,7 @@ export function WelcomeScreen() {
         </p>
       </section>
       <Link
-        className="flex h-10 items-center justify-center rounded-xl bg-[#ffd54f] text-xs font-semibold text-slate-950 transition hover:bg-[#ffca28]"
+        className="absolute inset-x-6 bottom-5 flex h-10 items-center justify-center rounded-xl bg-[#ffd54f] text-xs font-semibold text-slate-950 transition hover:bg-[#ffca28]"
         to="/user-select"
       >
         시작하기

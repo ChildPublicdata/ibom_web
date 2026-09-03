@@ -58,9 +58,9 @@ export function SafePlaceSetupScreen() {
           <button
             type="button"
             onClick={() => navigate('/safe-place-search')}
-            className="absolute left-1/2 top-[165px] z-10 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-[#3b82f6] shadow-md"
+            className="absolute left-1/2 top-[140px] z-10 inline-flex -translate-x-1/2 items-center whitespace-nowrap rounded-full border border-slate-200 bg-white px-5 py-1.5 text-sm font-medium text-[#3b82f6] shadow-md"
           >
-            <img src={searchIcon} alt="" className="mr-1.5 h-4 w-4" />
+            <img src={searchIcon} alt="" className="mr-1.5 h-3.5 w-3.5" />
             장소 검색하기
           </button>
         )}
