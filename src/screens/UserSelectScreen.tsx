@@ -14,7 +14,7 @@ export function UserSelectScreen() {
 
   return (
     <main className="flex min-h-[100svh] w-full max-w-[390px] flex-col bg-white px-5 pb-5 pt-24">
-      <section>
+      <section className="text-center">
         <p className="text-xs text-slate-400">
           아이봄을 사용하기 전, 기본 정보가 필요해요.
         </p>
@@ -34,7 +34,7 @@ export function UserSelectScreen() {
               } border-black/5 hover:-translate-y-0.5`}
               key={role}
               onClick={() =>
-                navigate(role === 'parent' ? '/child-info' : '/home')
+                navigate(role === 'parent' ? '/parent-signup' : '/home')
               }
               type="button"
             >

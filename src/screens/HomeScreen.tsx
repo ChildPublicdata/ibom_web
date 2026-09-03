@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import headerLogo from '@/assets/header-logo.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import homeMarkerIcon from '@/assets/icons/home-marker.svg'
@@ -165,7 +166,7 @@ export function HomeScreen() {
     <main className="relative flex min-h-[100svh] w-full max-w-[390px] flex-col overflow-hidden bg-white font-sans text-neutral-900">
       <header className="relative z-30 bg-white px-4 pb-2 pt-4 shadow-sm">
         <div className="flex h-10 items-center justify-between">
-          <span className="text-xl tracking-[-0.04em]">LOGO</span>
+          <img src={headerLogo} alt="아이봄" className="h-[34px] w-auto" />
           <div className="flex items-center gap-4">
             <PhoneCallButton />
             <button type="button" aria-label="알림">

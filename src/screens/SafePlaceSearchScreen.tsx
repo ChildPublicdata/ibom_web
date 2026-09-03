@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import headerLogo from '@/assets/header-logo.svg'
 import notificationIcon from '@/assets/icons/notification.svg'
 import searchIcon from '@/assets/icons/search.svg'
 import { PhoneCallButton } from '@/components/CallModal'
@@ -22,7 +23,7 @@ export function SafePlaceSearchScreen() {
     <main className="flex min-h-[100svh] w-full max-w-[390px] flex-col bg-white text-[#202020]">
       <header className="border-b border-slate-100 bg-white px-5 pb-4 pt-5">
         <div className="flex h-10 items-center justify-between">
-          <span className="text-2xl tracking-[-0.04em]">LOGO</span>
+          <img src={headerLogo} alt="아이봄" className="h-[34px] w-auto" />
           <div className="flex items-center gap-5">
             <PhoneCallButton />
             <button type="button" aria-label="알림">

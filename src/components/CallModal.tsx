@@ -73,7 +73,7 @@ export function PhoneCallButton({ className = '' }: PhoneCallButtonProps) {
         className={className}
         onClick={() => setIsOpen(true)}
       >
-        <img src={phoneIcon} className="h-7 w-7" alt="" />
+        <img src={phoneIcon} className="h-6 w-6" alt="" />
       </button>
       <CallModal open={isOpen} onClose={() => setIsOpen(false)} />
     </>

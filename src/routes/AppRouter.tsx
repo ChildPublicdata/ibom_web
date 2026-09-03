@@ -8,6 +8,8 @@ import { SafetyAreaScreen } from '@/screens/SafetyAreaScreen'
 import { SplashScreen } from '@/screens/SplashScreen'
 import { UserSelectScreen } from '@/screens/UserSelectScreen'
 import { WelcomeScreen } from '@/screens/WelcomeScreen'
+import { ParentSignupScreen } from '@/screens/ParentSignupScreen'
+import { FamilyCodeScreen } from '@/screens/FamilyCodeScreen'
 
 export function AppRouter() {
   return (
@@ -16,7 +18,9 @@ export function AppRouter() {
         <Route path="/" element={<SplashScreen />} />
         <Route path="/welcome" element={<WelcomeScreen />} />
         <Route path="/user-select" element={<UserSelectScreen />} />
+        <Route path="/parent-signup" element={<ParentSignupScreen />} />
         <Route path="/child-info" element={<ChildInfoScreen />} />
+        <Route path="/family-code" element={<FamilyCodeScreen />} />
         <Route path="/safe-place-setup" element={<SafePlaceSetupScreen />} />
         <Route path="/safe-place-search" element={<SafePlaceSearchScreen />} />
         <Route path="/safe-zone-setup" element={<SafeZoneSetupScreen />} />
