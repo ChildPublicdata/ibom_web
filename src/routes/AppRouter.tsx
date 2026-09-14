@@ -11,6 +11,7 @@ import { WelcomeScreen } from '@/screens/WelcomeScreen'
 import { ParentSignupScreen } from '@/screens/ParentSignupScreen'
 import { FamilyCodeScreen } from '@/screens/FamilyCodeScreen'
 import { LoginScreen } from '@/screens/LoginScreen'
+import { FamilyCodeInputScreen } from '@/screens/FamilyCodeInputScreen'
 
 export function AppRouter() {
   return (
@@ -23,6 +24,7 @@ export function AppRouter() {
         <Route path="/parent-signup" element={<ParentSignupScreen />} />
         <Route path="/child-info" element={<ChildInfoScreen />} />
         <Route path="/family-code" element={<FamilyCodeScreen />} />
+        <Route path="/family-code-input" element={<FamilyCodeInputScreen />} />
         <Route path="/safe-place-setup" element={<SafePlaceSetupScreen />} />
         <Route path="/safe-place-search" element={<SafePlaceSearchScreen />} />
         <Route path="/safe-zone-setup" element={<SafeZoneSetupScreen />} />

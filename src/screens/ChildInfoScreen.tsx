@@ -39,9 +39,10 @@ export function ChildInfoScreen() {
         role: selectedRole,
       })
       saveAuthSession(session)
-      navigate(session.role === 'CHILD' ? '/family-code' : '/home', {
-        replace: true,
-      })
+      navigate(
+        session.role === 'CHILD' ? '/family-code' : '/family-code-input',
+        { replace: true },
+      )
     } catch (signupError) {
       setError(
         signupError instanceof Error
