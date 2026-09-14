@@ -4,6 +4,7 @@ import homeMarkerIcon from '@/assets/icons/home-marker.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { SetupMap } from '@/components/SetupMap'
 import { SetupHeader } from '@/components/SetupHeader'
+import { createSafeZone } from '@/lib/safetyApi'
 import { useAppStore } from '@/store/useAppStore'
 
 export function SafeZoneSetupScreen() {
@@ -11,8 +12,36 @@ export function SafeZoneSetupScreen() {
   const [radius, setRadius] = useState(100)
   const [alertEnabled, setAlertEnabled] = useState(true)
   const [isComplete, setIsComplete] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState('')
   const navigate = useNavigate()
   const safePlacePosition = useAppStore((state) => state.safePlacePosition)
+
+  const saveZone = async () => {
+    if (!safePlacePosition) {
+      setError('먼저 안전장소를 선택해 주세요.')
+      return
+    }
+    setIsSaving(true)
+    setError('')
+    try {
+      await createSafeZone({
+        name: '내 안전구역',
+        centerLat: safePlacePosition.lat,
+        centerLon: safePlacePosition.lng,
+        radiusM: radius,
+      })
+      setIsComplete(true)
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : '안전구역을 저장하지 못했습니다.',
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <main className="relative flex min-h-[100svh] w-full max-w-[390px] flex-col overflow-hidden bg-white">
@@ -56,12 +85,16 @@ export function SafeZoneSetupScreen() {
             />
           </button>
         </div>
+        {error && (
+          <p className="mt-2 text-center text-[10px] text-red-500">{error}</p>
+        )}
         <button
-          onClick={() => setIsComplete(true)}
+          onClick={saveZone}
+          disabled={isSaving}
           type="button"
           className="mt-3 h-11 w-full rounded-lg bg-[#ffd54f] text-xs font-semibold"
         >
-          보호구역 저장
+          {isSaving ? '저장 중...' : '보호구역 저장'}
         </button>
       </section>
       <BottomNavigation highlighted={showGuide} />

@@ -75,6 +75,17 @@ declare global {
           },
         ): void
       }
+      type AddressSearchResult = Array<{
+        address: { address_name: string }
+        road_address: { address_name: string } | null
+      }>
+      class Geocoder {
+        coord2Address(
+          lng: number,
+          lat: number,
+          callback: (result: AddressSearchResult, status: StatusValue) => void,
+        ): void
+      }
     }
     class Marker {
       constructor(options: { map: Map; position: LatLng; image?: MarkerImage })

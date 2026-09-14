@@ -10,6 +10,8 @@ import { BottomNavigation } from '@/components/BottomNavigation'
 import { SetupMap } from '@/components/SetupMap'
 import { SetupHeader } from '@/components/SetupHeader'
 import type { KakaoMapCoordinate } from '@/components/KakaoMap'
+import { addressFromCoordinate } from '@/lib/kakaoPlaces'
+import { createSafePlace } from '@/lib/safetyApi'
 import { useAppStore } from '@/store/useAppStore'
 
 type SheetState = 'closed' | 'open' | 'collapsed'
@@ -22,24 +24,73 @@ const safePlaceIcons: { id: SafePlaceIcon; label: string; src: string }[] = [
   { id: 'academy', label: '학원', src: safePlaceAcademyIcon },
 ]
 
+const safePlaceIconTypes: Record<SafePlaceIcon, number> = {
+  school: 1,
+  hospital: 2,
+  home: 3,
+  academy: 4,
+}
+
 export function SafePlaceSetupScreen() {
+  const safePlaceDraft = useAppStore((state) => state.safePlaceDraft)
   const [showGuide, setShowGuide] = useState(true)
   const [selectedPosition, setSelectedPosition] =
-    useState<KakaoMapCoordinate | null>({ lat: 37.5665, lng: 126.978 })
-  const [sheetState, setSheetState] = useState<SheetState>('collapsed')
-  const [name, setName] = useState('')
+    useState<KakaoMapCoordinate | null>(safePlaceDraft?.position ?? null)
+  const [sheetState, setSheetState] = useState<SheetState>(
+    safePlaceDraft ? 'open' : 'collapsed',
+  )
+  const [name, setName] = useState(safePlaceDraft?.name ?? '')
+  const [baseAddress, setBaseAddress] = useState(safePlaceDraft?.address ?? '')
   const [address, setAddress] = useState('')
   const [selectedIcon, setSelectedIcon] = useState<SafePlaceIcon | null>(null)
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState('')
   const pointerStartY = useRef<number | null>(null)
   const navigate = useNavigate()
   const setSafePlacePosition = useAppStore(
     (state) => state.setSafePlacePosition,
   )
 
-  const selectPlace = (position: KakaoMapCoordinate) => {
+  const selectPlace = async (position: KakaoMapCoordinate) => {
     setSelectedPosition(position)
     setSheetState('open')
+    setError('')
+    try {
+      setBaseAddress(await addressFromCoordinate(position))
+    } catch (searchError) {
+      setError(
+        searchError instanceof Error
+          ? searchError.message
+          : '주소를 찾지 못했습니다.',
+      )
+    }
+  }
+
+  const savePlace = async () => {
+    if (!selectedPosition || !name || !baseAddress || !selectedIcon) return
+    setIsSaving(true)
+    setError('')
+    try {
+      const saved = await createSafePlace({
+        name,
+        address: baseAddress,
+        detailAddress: address,
+        iconType: safePlaceIconTypes[selectedIcon],
+        lat: selectedPosition.lat,
+        lon: selectedPosition.lng,
+      })
+      setSafePlacePosition({ lat: saved.lat, lng: saved.lon })
+      navigate('/safe-zone-setup')
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : '안전장소를 저장하지 못했습니다.',
+      )
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -135,16 +186,19 @@ export function SafePlaceSetupScreen() {
               className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-[#ffd54f]"
             />
           </label>
+          {baseAddress && (
+            <p className="mt-2 truncate text-[10px] text-slate-400">
+              {baseAddress}
+            </p>
+          )}
+          {error && <p className="mt-2 text-[10px] text-red-500">{error}</p>}
           <button
-            disabled={!selectedIcon || !name || !address}
-            onClick={() => {
-              if (selectedPosition) setSafePlacePosition(selectedPosition)
-              navigate('/safe-zone-setup')
-            }}
+            disabled={!selectedIcon || !name || !baseAddress || isSaving}
+            onClick={savePlace}
             type="button"
             className="mt-4 h-11 w-full rounded-lg bg-[#ffd54f] text-xs font-semibold disabled:bg-[#ffedb1] disabled:text-white"
           >
-            안전장소 저장
+            {isSaving ? '저장 중...' : '안전장소 저장'}
           </button>
         </section>
       )}

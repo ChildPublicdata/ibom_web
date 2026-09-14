@@ -17,6 +17,47 @@ export type KakaoPlace = {
   url: string
 }
 
+export async function searchPlacesByKeyword(
+  query: string,
+): Promise<KakaoPlace[]> {
+  if (!query.trim()) return []
+  const maps = await loadKakaoMaps()
+  const places = new maps.services.Places()
+  const result = await new Promise<kakao.maps.services.PlacesSearchResult>(
+    (resolve, reject) => {
+      places.keywordSearch(query, (items, status) => {
+        if (status === maps.services.Status.OK) resolve(items)
+        else if (status === maps.services.Status.ZERO_RESULT) resolve([])
+        else reject(new Error('장소 검색 중 오류가 발생했습니다.'))
+      })
+    },
+  )
+  return result.map((place) => ({
+    id: place.id,
+    name: place.place_name,
+    category: place.category_name.split(' > ').at(-1) ?? '',
+    address: place.road_address_name || place.address_name,
+    phone: place.phone,
+    distanceMeters: Number(place.distance) || 0,
+    position: { lat: Number(place.y), lng: Number(place.x) },
+    url: place.place_url,
+  }))
+}
+
+export async function addressFromCoordinate(position: KakaoMapCoordinate) {
+  const maps = await loadKakaoMaps()
+  const geocoder = new maps.services.Geocoder()
+  return new Promise<string>((resolve, reject) => {
+    geocoder.coord2Address(position.lng, position.lat, (items, status) => {
+      if (status === maps.services.Status.OK && items[0]) {
+        resolve(
+          items[0].road_address?.address_name || items[0].address.address_name,
+        )
+      } else reject(new Error('선택한 위치의 주소를 찾지 못했습니다.'))
+    })
+  })
+}
+
 const categoryCodes: Partial<Record<PlaceSearchKind, string>> = {
   병원: 'HP8',
   약국: 'PM9',

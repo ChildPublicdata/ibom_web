@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import headerLogo from '@/assets/header-logo.svg'
 import childStationary from '@/assets/child-motion/child-stationary.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
@@ -9,26 +9,109 @@ import riskAreaMarker from '@/assets/icons/risk-area-marker.svg'
 import safeAreaStatusIcon from '@/assets/icons/safe-area-status.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { PhoneCallButton } from '@/components/CallModal'
-import { KakaoMap, type KakaoMapMarker } from '@/components/KakaoMap'
+import {
+  KakaoMap,
+  type KakaoMapBounds,
+  type KakaoMapMarker,
+} from '@/components/KakaoMap'
+import {
+  checkSafeZones,
+  listCctv,
+  listFacilities,
+  listRiskZones,
+  listSafeZones,
+  listSafetyBells,
+  listTrafficAccidents,
+  type Cctv,
+  type Facility,
+  type RiskZone,
+  type SafeZone,
+  type SafetyBell,
+  type TrafficAccident,
+} from '@/lib/safetyApi'
 
 const CHILD_POSITION = { lat: 36.325, lng: 127.4214 }
-const SAFE_PLACE_POSITION = { lat: 36.3261, lng: 127.4199 }
-// 퍼블리싱 확인용: 자녀 위치 바로 오른쪽에 배치한 임시 위험지역입니다.
-const RISK_POSITION = { lat: 36.32508, lng: 127.42168 }
 const categories = ['소아과', '병원', '약국', '경찰서', '어린이보호구역']
-const accidentItems = [
-  { type: '자전거 교통사고', count: 3 },
-  { type: '보행어린이 교통사고', count: 2 },
-  { type: '보행자 교통사고', count: 3 },
-  { type: '어린이보호구역 내 어린이 교통사고', count: 2 },
-  { type: '링크기반 교통사고', count: 1 },
-]
 
 export function SafetyAreaScreen() {
-  const [selectedRisk, setSelectedRisk] = useState(false)
+  const [selectedRisk, setSelectedRisk] = useState<RiskZone | null>(null)
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
   const [mapCenter, setMapCenter] = useState(CHILD_POSITION)
+  const [mapBounds, setMapBounds] = useState<KakaoMapBounds | null>(null)
+  const [riskZones, setRiskZones] = useState<RiskZone[]>([])
+  const [facilities, setFacilities] = useState<Facility[]>([])
+  const [safeZones, setSafeZones] = useState<SafeZone[]>([])
+  const [cctv, setCctv] = useState<Cctv[]>([])
+  const [safetyBells, setSafetyBells] = useState<SafetyBell[]>([])
+  const [trafficAccidents, setTrafficAccidents] = useState<TrafficAccident[]>(
+    [],
+  )
+  const [isChildInside, setIsChildInside] = useState<boolean | null>(null)
   const sheetPointerY = useRef<number | null>(null)
+
+  useEffect(() => {
+    Promise.all([
+      listSafeZones(),
+      listCctv(),
+      listSafetyBells(),
+      listTrafficAccidents(),
+    ])
+      .then(([zones, cctvPage, bellPage, accidentPage]) => {
+        setSafeZones(zones)
+        setCctv(cctvPage.content)
+        setSafetyBells(bellPage.content)
+        setTrafficAccidents(accidentPage.content)
+      })
+      .catch(() => undefined)
+    checkSafeZones(CHILD_POSITION.lat, CHILD_POSITION.lng)
+      .then((result) => setIsChildInside(result.inside))
+      .catch(() => setIsChildInside(null))
+  }, [])
+
+  useEffect(() => {
+    if (!mapBounds) return
+    const bounds = {
+      swLat: mapBounds.southWest.lat,
+      swLng: mapBounds.southWest.lng,
+      neLat: mapBounds.northEast.lat,
+      neLng: mapBounds.northEast.lng,
+    }
+    Promise.all([listRiskZones(bounds), listFacilities(bounds)])
+      .then(([zones, foundFacilities]) => {
+        setRiskZones(zones)
+        setFacilities(foundFacilities)
+      })
+      .catch(() => {
+        setRiskZones([])
+        setFacilities([])
+      })
+  }, [mapBounds])
+
+  const isVisible = (lat: number, lng: number) =>
+    !mapBounds ||
+    (lat >= mapBounds.southWest.lat &&
+      lat <= mapBounds.northEast.lat &&
+      lng >= mapBounds.southWest.lng &&
+      lng <= mapBounds.northEast.lng)
+
+  const visibleAccidentZones: RiskZone[] = trafficAccidents
+    .filter((item) => isVisible(item.lat, item.lon))
+    .map((item) => ({
+      zoneId: `accident-${item.id}`,
+      type: item.accidentType,
+      lat: item.lat,
+      lng: item.lon,
+      radiusM: 100,
+      riskScore: item.accidentCount,
+      grade: '사고다발지역',
+      accidents: item.accidentCount,
+      fatalities: item.deathCount,
+      serious: item.seriousInjuryCount,
+      minor: item.minorInjuryCount,
+      topAccidentType: item.accidentType,
+    }))
+  const visibleRiskZones =
+    riskZones.length > 0 ? riskZones : visibleAccidentZones
 
   const markers: KakaoMapMarker[] = [
     {
@@ -37,23 +120,53 @@ export function SafetyAreaScreen() {
       imageUrl: childStationary,
       imageSize: { width: 78, height: 77 },
     },
-    {
-      id: 'safe-place',
-      position: SAFE_PLACE_POSITION,
+    ...safeZones.map((zone) => ({
+      id: `safe-${zone.id}`,
+      position: { lat: zone.centerLat, lng: zone.centerLon },
       imageUrl: homeMarkerIcon,
       imageSize: { width: 45, height: 55 },
-    },
-    {
-      id: 'risk-area',
-      position: RISK_POSITION,
+    })),
+    ...visibleRiskZones.map((zone) => ({
+      id: zone.zoneId,
+      position: { lat: zone.lat, lng: zone.lng },
       imageUrl: riskAreaMarker,
       imageSize: { width: 52, height: 52 },
       onClick: () => {
-        setSelectedRisk(true)
-        setMapCenter(RISK_POSITION)
+        setSelectedRisk(zone)
+        setMapCenter({ lat: zone.lat, lng: zone.lng })
       },
-    },
+    })),
+    ...facilities.map((facility) => ({
+      id: facility.facilityId,
+      position: { lat: facility.lat, lng: facility.lng },
+    })),
+    ...(facilities.length === 0
+      ? cctv
+          .filter((item) => isVisible(item.lat, item.lon))
+          .map((item) => ({
+            id: `cctv-${item.id}`,
+            position: { lat: item.lat, lng: item.lon },
+          }))
+      : []),
+    ...safetyBells
+      .filter((item) => isVisible(item.lat, item.lon))
+      .map((item) => ({
+        id: `bell-${item.id}`,
+        position: { lat: item.lat, lng: item.lon },
+      })),
   ]
+
+  const accidentItems = selectedRisk
+    ? [
+        {
+          type: selectedRisk.topAccidentType || '전체 교통사고',
+          count: selectedRisk.accidents,
+        },
+        { type: '중상 사고', count: selectedRisk.serious },
+        { type: '경상 사고', count: selectedRisk.minor },
+        { type: '사망 사고', count: selectedRisk.fatalities },
+      ]
+    : []
 
   return (
     <main className="relative flex min-h-[100svh] w-full max-w-[390px] flex-col overflow-hidden bg-white font-sans text-neutral-900">
@@ -88,11 +201,12 @@ export function SafetyAreaScreen() {
           center={mapCenter}
           level={2}
           markers={markers}
+          onBoundsChange={setMapBounds}
           circle={
             selectedRisk
               ? {
-                  center: RISK_POSITION,
-                  radius: 120,
+                  center: { lat: selectedRisk.lat, lng: selectedRisk.lng },
+                  radius: selectedRisk.radiusM,
                   strokeColor: '#FFD54F',
                   strokeOpacity: 1,
                   fillColor: '#FFD54F',
@@ -129,14 +243,20 @@ export function SafetyAreaScreen() {
         </div>
 
         {!selectedRisk && (
-          <section className="absolute bottom-4 left-4 right-4 z-20 rounded-2xl bg-main-yellow px-4 py-3 shadow-lg">
+          <section
+            className={`absolute bottom-4 left-4 right-4 z-20 rounded-2xl px-4 py-3 shadow-lg ${isChildInside === false ? 'bg-main-orange' : 'bg-main-yellow'}`}
+          >
             <div className="flex items-center gap-3 text-white">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-sub-leaf">
-                  <img src={safeAreaStatusIcon} alt="" className="h-8 w-8" />
+                <img src={safeAreaStatusIcon} alt="" className="h-8 w-8" />
               </span>
               <div>
                 <p className="text-xs font-semibold">
-                  우리 아이는 지금 안전구역에 있어요.
+                  {isChildInside === null
+                    ? '안전구역 상태를 확인하고 있어요.'
+                    : isChildInside
+                      ? '우리 아이는 지금 안전구역에 있어요.'
+                      : '우리 아이가 안전구역 밖에 있어요.'}
                 </p>
                 <p className="mt-1 text-[9px]">2026.08.25 · 최신 위치 · GPS</p>
               </div>
@@ -175,13 +295,13 @@ export function SafetyAreaScreen() {
                   이 곳은 사고 다발 구역입니다.
                 </p>
                 <p className="mt-1 text-[10px] text-neutral-500">
-                  2026.08.25 오전 11:00 기준
+                  위험도 {selectedRisk.riskScore} · {selectedRisk.grade}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedRisk(false)
+                  setSelectedRisk(null)
                   setIsSheetExpanded(false)
                 }}
                 aria-label="닫기"
