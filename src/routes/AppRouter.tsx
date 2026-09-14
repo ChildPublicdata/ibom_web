@@ -12,6 +12,7 @@ import { ParentSignupScreen } from '@/screens/ParentSignupScreen'
 import { FamilyCodeScreen } from '@/screens/FamilyCodeScreen'
 import { LoginScreen } from '@/screens/LoginScreen'
 import { FamilyCodeInputScreen } from '@/screens/FamilyCodeInputScreen'
+import { RequireAuth } from '@/components/RequireAuth'
 
 export function AppRouter() {
   return (
@@ -23,8 +24,22 @@ export function AppRouter() {
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/parent-signup" element={<ParentSignupScreen />} />
         <Route path="/child-info" element={<ChildInfoScreen />} />
-        <Route path="/family-code" element={<FamilyCodeScreen />} />
-        <Route path="/family-code-input" element={<FamilyCodeInputScreen />} />
+        <Route
+          path="/family-code"
+          element={
+            <RequireAuth role="CHILD">
+              <FamilyCodeScreen />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/family-code-input"
+          element={
+            <RequireAuth role="PARENT">
+              <FamilyCodeInputScreen />
+            </RequireAuth>
+          }
+        />
         <Route path="/safe-place-setup" element={<SafePlaceSetupScreen />} />
         <Route path="/safe-place-search" element={<SafePlaceSearchScreen />} />
         <Route path="/safe-zone-setup" element={<SafeZoneSetupScreen />} />
