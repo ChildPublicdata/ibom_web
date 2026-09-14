@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { signup } from '@/lib/authApi'
+import { saveAuthSession } from '@/lib/authStorage'
+import { useAppStore } from '@/store/useAppStore'
 
 function formatPhoneNumber(value: string) {
   const numbers = value.replace(/\D/g, '').slice(0, 11)
@@ -10,25 +13,54 @@ function formatPhoneNumber(value: string) {
 
 export function ChildInfoScreen() {
   const navigate = useNavigate()
+  const selectedRole = useAppStore((state) => state.selectedRole)
+  const signupDraft = useAppStore((state) => state.signupDraft)
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('')
-  const [phoneNumber, setPhoneNumber] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState(signupDraft?.phoneNumber ?? '')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   const isComplete =
     name.trim().length > 0 &&
     birthDate.length === 6 &&
     phoneNumber.replace(/\D/g, '').length === 11
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (isComplete) navigate('/family-code')
+    if (!isComplete || !signupDraft || !selectedRole) return
+    setIsSubmitting(true)
+    setError('')
+    try {
+      const session = await signup({
+        ...signupDraft,
+        phoneNumber,
+        name: name.trim(),
+        role: selectedRole,
+      })
+      saveAuthSession(session)
+      navigate(session.role === 'CHILD' ? '/family-code' : '/home', {
+        replace: true,
+      })
+    } catch (signupError) {
+      setError(
+        signupError instanceof Error
+          ? signupError.message
+          : '회원가입하지 못했습니다.',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <main className="flex min-h-[100svh] w-full max-w-[390px] flex-col bg-white px-4 pb-6 pt-20 text-neutral-950">
       <div>
         <h1 className="text-center text-[28px] font-bold leading-[1.45] tracking-[-0.05em]">
-          <span className="text-[#ff9800]">자녀의 정보</span>를
+          <span className="text-[#ff9800]">
+            {selectedRole === 'PARENT' ? '부모의 정보' : '자녀의 정보'}
+          </span>
+          를
           <br />
           입력해 주세요!
         </h1>
@@ -81,12 +113,17 @@ export function ChildInfoScreen() {
           </label>
         </div>
 
+        {error && (
+          <p className="mt-3 text-center text-xs text-red-500">{error}</p>
+        )}
         <button
           type="submit"
-          disabled={!isComplete}
+          disabled={
+            !isComplete || !signupDraft || !selectedRole || isSubmitting
+          }
           className="mt-auto h-14 w-full rounded-[18px] bg-[#ffd54f] text-sm font-semibold text-neutral-950 transition disabled:bg-neutral-300 disabled:text-white"
         >
-          완료
+          {isSubmitting ? '가입 중...' : '완료'}
         </button>
       </form>
     </main>

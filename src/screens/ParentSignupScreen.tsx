@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAppStore } from '@/store/useAppStore'
 
 function formatPhoneNumber(value: string) {
   const numbers = value.replace(/\D/g, '').slice(0, 11)
@@ -10,18 +11,21 @@ function formatPhoneNumber(value: string) {
 
 export function ParentSignupScreen() {
   const navigate = useNavigate()
+  const setSignupDraft = useAppStore((state) => state.setSignupDraft)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
 
   const isComplete =
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
-    password.length >= 6 &&
-    phoneNumber.replace(/\D/g, '').length === 11
+    password.length >= 8 &&
+    /^[0-9-]{9,20}$/.test(phoneNumber)
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (isComplete) navigate('/child-info')
+    if (!isComplete) return
+    setSignupDraft({ email, password, phoneNumber })
+    navigate('/child-info')
   }
 
   return (
@@ -59,9 +63,9 @@ export function ParentSignupScreen() {
             <input
               autoComplete="new-password"
               className="mt-2 h-12 w-full rounded-xl border border-neutral-200 px-4 text-sm font-normal outline-none transition placeholder:text-neutral-400 focus:border-[#ffd54f]"
-              minLength={6}
+              minLength={8}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="6자 이상 입력해 주세요"
+              placeholder="8자 이상 입력해 주세요"
               type="password"
               value={password}
             />
