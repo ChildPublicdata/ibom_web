@@ -24,9 +24,16 @@ import {
   type KakaoPlace,
   type PlaceSearchKind,
 } from '@/lib/kakaoPlaces'
+import { getAuthSession } from '@/lib/authStorage'
+import {
+  getChildLocation,
+  listChildren,
+  reportChildLocation,
+} from '@/lib/familyApi'
+import { useAppStore } from '@/store/useAppStore'
 
 // 자녀 위치 API 연결 전 기본 위치입니다. 이후 서버에서 받은 최신 좌표로 교체합니다.
-const CHILD_POSITION = { lat: 36.325, lng: 127.4214 }
+const FALLBACK_CHILD_POSITION = { lat: 36.325, lng: 127.4214 }
 const SAFE_PLACE_POSITION = { lat: 36.3261, lng: 127.4199 }
 const categories: PlaceSearchKind[] = [
   '소아과',
@@ -51,7 +58,12 @@ function formatDistance(meters: number) {
 }
 
 export function HomeScreen() {
-  const [mapCenter, setMapCenter] = useState<KakaoMapCoordinate>(CHILD_POSITION)
+  const [childPosition, setChildPosition] = useState<KakaoMapCoordinate>(
+    FALLBACK_CHILD_POSITION,
+  )
+  const [mapCenter, setMapCenter] = useState<KakaoMapCoordinate>(
+    FALLBACK_CHILD_POSITION,
+  )
   const [myPosition, setMyPosition] = useState<KakaoMapCoordinate | null>(null)
   const [selectedCategory, setSelectedCategory] =
     useState<PlaceSearchKind | null>(null)
@@ -63,6 +75,58 @@ export function HomeScreen() {
   const [motionFrame, setMotionFrame] = useState(0)
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
   const sheetPointerY = useRef<number | null>(null)
+  const selectedChildId = useAppStore((state) => state.selectedChildId)
+  const setSelectedChildId = useAppStore((state) => state.setSelectedChildId)
+
+  useEffect(() => {
+    const session = getAuthSession()
+    if (!session) return
+
+    if (session.role === 'CHILD') {
+      if (!navigator.geolocation) return
+      const watchId = navigator.geolocation.watchPosition(
+        ({ coords }) => {
+          const position = { lat: coords.latitude, lng: coords.longitude }
+          setChildPosition(position)
+          setMapCenter(position)
+          reportChildLocation(position.lat, position.lng).catch(() => undefined)
+        },
+        () => setError('현재 위치 권한을 허용해 주세요.'),
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 },
+      )
+      return () => navigator.geolocation.clearWatch(watchId)
+    }
+
+    let cancelled = false
+    const refreshChildLocation = async () => {
+      try {
+        const children = await listChildren()
+        if (cancelled || children.length === 0) return
+        const selected =
+          children.find((child) => String(child.childId) === selectedChildId) ??
+          children[0]
+        setSelectedChildId(String(selected.childId))
+        const location = await getChildLocation(selected.childId)
+        if (cancelled) return
+        const position = { lat: location.lat, lng: location.lon }
+        setChildPosition(position)
+        setMapCenter(position)
+      } catch (locationError) {
+        if (!cancelled)
+          setError(
+            locationError instanceof Error
+              ? locationError.message
+              : '자녀 위치를 불러오지 못했습니다.',
+          )
+      }
+    }
+    void refreshChildLocation()
+    const timer = window.setInterval(refreshChildLocation, 10000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [selectedChildId, setSelectedChildId])
 
   useEffect(() => {
     if (!isChildMoving) return
@@ -134,7 +198,7 @@ export function HomeScreen() {
     const result: KakaoMapMarker[] = [
       {
         id: 'child',
-        position: CHILD_POSITION,
+        position: childPosition,
         imageUrl: childMarkerImage,
         imageSize: { width: 78, height: 77 },
       },
@@ -154,7 +218,7 @@ export function HomeScreen() {
         imageSize: { width: 44, height: 44 },
       })
     return result
-  }, [childMarkerImage, myPosition, places])
+  }, [childMarkerImage, childPosition, myPosition, places])
 
   const closeCategory = () => {
     setSelectedCategory(null)
@@ -207,7 +271,7 @@ export function HomeScreen() {
         <div className="absolute left-3 top-20 z-10 flex flex-col gap-4">
           <button
             type="button"
-            onClick={() => setMapCenter(CHILD_POSITION)}
+            onClick={() => setMapCenter(childPosition)}
             className="flex flex-col items-center gap-1 text-[11px] font-medium"
           >
             <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border-4 border-white bg-[#fff8d9] shadow-md">
