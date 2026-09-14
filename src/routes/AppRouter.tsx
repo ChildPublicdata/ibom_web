@@ -10,6 +10,7 @@ import { UserSelectScreen } from '@/screens/UserSelectScreen'
 import { WelcomeScreen } from '@/screens/WelcomeScreen'
 import { ParentSignupScreen } from '@/screens/ParentSignupScreen'
 import { FamilyCodeScreen } from '@/screens/FamilyCodeScreen'
+import { LoginScreen } from '@/screens/LoginScreen'
 
 export function AppRouter() {
   return (
@@ -18,6 +19,7 @@ export function AppRouter() {
         <Route path="/" element={<SplashScreen />} />
         <Route path="/welcome" element={<WelcomeScreen />} />
         <Route path="/user-select" element={<UserSelectScreen />} />
+        <Route path="/login" element={<LoginScreen />} />
         <Route path="/parent-signup" element={<ParentSignupScreen />} />
         <Route path="/child-info" element={<ChildInfoScreen />} />
         <Route path="/family-code" element={<FamilyCodeScreen />} />

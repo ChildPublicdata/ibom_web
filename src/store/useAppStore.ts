@@ -1,5 +1,9 @@
 import { create } from 'zustand'
+import type { UserRole } from '@/lib/authStorage'
+
 type AppState = {
+  selectedRole: UserRole | null
+  setSelectedRole: (role: UserRole) => void
   selectedChildId: string | null
   setSelectedChildId: (childId: string | null) => void
   safePlacePosition: { lat: number; lng: number } | null
@@ -12,6 +16,8 @@ type AppState = {
   setSafePlaceDraft: (draft: AppState['safePlaceDraft']) => void
 }
 export const useAppStore = create<AppState>((set) => ({
+  selectedRole: null,
+  setSelectedRole: (selectedRole) => set({ selectedRole }),
   selectedChildId: null,
   setSelectedChildId: (selectedChildId) => set({ selectedChildId }),
   safePlacePosition: null,

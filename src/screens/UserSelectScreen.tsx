@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import childCharacter from '@/assets/onboarding/character-child.svg'
 import parentCharacter from '@/assets/onboarding/character-parent.svg'
+import { useAppStore } from '@/store/useAppStore'
 
 type UserRole = 'child' | 'parent'
 
@@ -11,6 +12,7 @@ const options: { role: UserRole; title: string; image: string }[] = [
 
 export function UserSelectScreen() {
   const navigate = useNavigate()
+  const setSelectedRole = useAppStore((state) => state.setSelectedRole)
 
   return (
     <main className="flex min-h-[100svh] w-full max-w-[390px] flex-col bg-white px-5 pb-5 pt-24">
@@ -33,9 +35,10 @@ export function UserSelectScreen() {
                 role === 'child' ? 'bg-[#fff9ee]' : 'bg-[#ffd54f]'
               } border-black/5 hover:-translate-y-0.5`}
               key={role}
-              onClick={() =>
-                navigate(role === 'parent' ? '/parent-signup' : '/home')
-              }
+              onClick={() => {
+                setSelectedRole(role === 'parent' ? 'PARENT' : 'CHILD')
+                navigate('/login')
+              }}
               type="button"
             >
               <span className="text-base font-semibold text-slate-950">
