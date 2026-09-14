@@ -13,6 +13,7 @@ import { FamilyCodeScreen } from '@/screens/FamilyCodeScreen'
 import { LoginScreen } from '@/screens/LoginScreen'
 import { FamilyCodeInputScreen } from '@/screens/FamilyCodeInputScreen'
 import { RequireAuth } from '@/components/RequireAuth'
+import { AiModeScreen } from '@/screens/AiModeScreen'
 
 export function AppRouter() {
   return (
@@ -44,6 +45,7 @@ export function AppRouter() {
         <Route path="/safe-place-search" element={<SafePlaceSearchScreen />} />
         <Route path="/safe-zone-setup" element={<SafeZoneSetupScreen />} />
         <Route path="/safety-area" element={<SafetyAreaScreen />} />
+        <Route path="/ai-mode" element={<AiModeScreen />} />
         <Route path="/home" element={<HomeScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

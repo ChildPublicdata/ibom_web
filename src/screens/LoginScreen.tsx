@@ -28,10 +28,9 @@ export function LoginScreen() {
         return
       }
       saveAuthSession(session)
-      navigate(
-        session.role === 'CHILD' ? '/family-code' : '/family-code-input',
-        { replace: true },
-      )
+      navigate(session.role === 'CHILD' ? '/home' : '/family-code-input', {
+        replace: true,
+      })
     } catch (loginError) {
       setError(
         loginError instanceof Error

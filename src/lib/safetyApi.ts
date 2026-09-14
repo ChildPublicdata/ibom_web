@@ -102,10 +102,14 @@ export type RiskZone = {
   radiusM: number
   riskScore: number
   grade: string
+  epdo: number
   accidents: number
   fatalities: number
   serious: number
   minor: number
+  district: string
+  roadName: string
+  roadType: string
   topAccidentType: string
 }
 
@@ -116,6 +120,43 @@ export const listRiskZones = (bounds: Bounds) =>
     `/api/zones?${new URLSearchParams(
       Object.entries(bounds).map(([key, value]) => [key, String(value)]),
     )}`,
+  )
+
+export type HazardGrid = {
+  gridId: string
+  lat: number
+  lng: number
+  sizeM: number
+  riskScore: number
+  grade: string
+  hasAccident: boolean
+  accidentCount: number
+  epdo: number
+  fatalities: number
+  cctvDistM: number
+  cctvCount200m: number
+  schoolZoneDistM: number
+  inSchoolZone: boolean
+  intersectionAccidents300m: number
+}
+
+export const listHazardGrids = (bounds: Bounds, minRisk = 0) =>
+  apiRequest<HazardGrid[]>(
+    `/api/grids?${new URLSearchParams([
+      ...Object.entries(bounds).map(([key, value]) => [key, String(value)]),
+      ['minRisk', String(minRisk)],
+    ])}`,
+  )
+
+export type AiExplanation = {
+  summary: string
+  message: string
+  action: string
+}
+
+export const getZoneExplanation = (zoneId: string) =>
+  apiRequest<AiExplanation>(
+    `/api/ai-explain?zoneId=${encodeURIComponent(zoneId)}`,
   )
 
 export type Facility = {

@@ -9,43 +9,82 @@ import homeIcon from '@/assets/icons/home.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import menuIcon from '@/assets/icons/menu.svg'
 import safeZoneIcon from '@/assets/icons/safe-zone.svg'
+import aiModeIcon from '@/assets/icons/ai-mode.svg'
 import { useNavigate } from 'react-router-dom'
+import { clearAuthSession, getAuthSession } from '@/lib/authStorage'
 
 type BottomNavigationProps = {
   className?: string
   highlighted?: boolean
-  active?: 'home' | 'safe-zone' | 'menu'
+  active?: 'home' | 'safe-zone' | 'ai' | 'menu'
+}
+
+function NavigationIcon({ src, active }: { src: string; active: boolean }) {
+  return (
+    <img
+      src={src}
+      alt=""
+      className="h-8 w-8 object-contain"
+      style={
+        active
+          ? {
+              filter:
+                'brightness(0) saturate(100%) invert(48%) sepia(91%) saturate(3176%) hue-rotate(202deg) brightness(99%) contrast(95%)',
+            }
+          : undefined
+      }
+    />
+  )
 }
 
 function NavigationItems({
   active = 'home',
   onMenuClick,
-}: Pick<BottomNavigationProps, 'active'> & { onMenuClick: () => void }) {
+  childOnly = false,
+}: Pick<BottomNavigationProps, 'active'> & {
+  onMenuClick: () => void
+  childOnly?: boolean
+}) {
   const navigate = useNavigate()
   return (
     <>
       <button
         type="button"
         onClick={() => navigate('/home')}
-        className={`flex flex-col items-center gap-0.5 ${active === 'home' ? 'font-semibold' : ''}`}
+        className="flex flex-col items-center gap-0.5"
       >
-        <img src={homeIcon} alt="" className="h-8 w-8" />홈
+        <NavigationIcon src={homeIcon} active={active === 'home'} />홈
       </button>
-      <button
-        type="button"
-        onClick={() => navigate('/safety-area')}
-        className={`flex flex-col items-center gap-0.5 ${active === 'safe-zone' ? 'font-semibold text-point-blue' : ''}`}
-      >
-        <img src={safeZoneIcon} alt="" className="h-8 w-8" />
-        안전 구역 모드
-      </button>
+      {!childOnly && (
+        <>
+          <button
+            type="button"
+            onClick={() => navigate('/safety-area')}
+            className="flex flex-col items-center gap-0.5"
+          >
+            <NavigationIcon
+              src={safeZoneIcon}
+              active={active === 'safe-zone'}
+            />
+            안전 구역 모드
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/ai-mode')}
+            className="flex flex-col items-center gap-0.5"
+          >
+            <NavigationIcon src={aiModeIcon} active={active === 'ai'} />
+            AI 모드
+          </button>
+        </>
+      )}
       <button
         type="button"
         onClick={onMenuClick}
         aria-label="메뉴 열기"
-        className={`flex flex-col items-center gap-0.5 ${active === 'menu' ? 'font-semibold' : ''}`}
+        className="flex flex-col items-center gap-0.5"
       >
-        <img src={menuIcon} alt="" className="h-8 w-8" />
+        <NavigationIcon src={menuIcon} active={active === 'menu'} />
         메뉴
       </button>
     </>
@@ -58,6 +97,9 @@ export function BottomNavigation({
   active = 'home',
 }: BottomNavigationProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const navigate = useNavigate()
+  const session = getAuthSession()
+  const childOnly = !highlighted && session?.role === 'CHILD'
 
   useEffect(() => {
     if (!isMenuOpen) return
@@ -87,7 +129,9 @@ export function BottomNavigation({
             <img src={homeChildAvatar} alt="" className="h-11 w-11" />
           </span>
           <div className="ml-4">
-            <p className="text-base font-bold tracking-[-0.03em]">꼬꼬맘</p>
+            <p className="text-base font-bold tracking-[-0.03em]">
+              {session?.name ?? '꼬꼬맘'}
+            </p>
             <p className="mt-1 text-sm text-neutral-400">대전시</p>
           </div>
           <button
@@ -102,9 +146,13 @@ export function BottomNavigation({
 
         <div className="mx-0 mt-5 border-t border-neutral-200 pt-4">
           <div className="grid grid-cols-3 gap-x-4 gap-y-3">
-            <MenuCard icon={menuSafePlaceIcon} label={'안전장소\n설정'} />
-            <MenuCard icon={menuChildLocationIcon} label="아이 위치" />
-            <MenuCard icon={menuRouteIcon} label="안심루트" />
+            {!childOnly && (
+              <>
+                <MenuCard icon={menuSafePlaceIcon} label={'안전장소\n설정'} />
+                <MenuCard icon={menuChildLocationIcon} label="아이 위치" />
+                <MenuCard icon={menuRouteIcon} label="안심루트" />
+              </>
+            )}
             <MenuCard icon={menuEditProfileIcon} label="정보수정" />
             <MenuCard icon={menuDeviceSettingsIcon} label="기기설정" />
             <MenuCard icon={menuCustomerCenterIcon} label="고객센터" />
@@ -113,6 +161,11 @@ export function BottomNavigation({
 
         <button
           type="button"
+          onClick={() => {
+            clearAuthSession()
+            setIsMenuOpen(false)
+            navigate('/user-select', { replace: true })
+          }}
           className="mt-4 self-center text-sm text-neutral-300"
         >
           로그아웃
@@ -136,6 +189,7 @@ export function BottomNavigation({
             <NavigationItems
               active={active}
               onMenuClick={() => setIsMenuOpen(true)}
+              childOnly={childOnly}
             />
           </div>
         </nav>
@@ -153,6 +207,7 @@ export function BottomNavigation({
         <NavigationItems
           active={isMenuOpen ? 'menu' : active}
           onMenuClick={() => setIsMenuOpen(true)}
+          childOnly={childOnly}
         />
       </nav>
     </>

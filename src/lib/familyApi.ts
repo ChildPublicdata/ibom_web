@@ -10,6 +10,7 @@ export type LocationResponse = { lat: number; lon: number; updatedAt: string }
 export type ChildSummary = {
   childId: number
   name: string
+  phoneNumber?: string | null
   lat: number | null
   lon: number | null
   updatedAt: string | null

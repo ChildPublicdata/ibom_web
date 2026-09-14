@@ -58,6 +58,7 @@ function formatDistance(meters: number) {
 }
 
 export function HomeScreen() {
+  const isChild = getAuthSession()?.role === 'CHILD'
   const [childPosition, setChildPosition] = useState<KakaoMapCoordinate>(
     FALLBACK_CHILD_POSITION,
   )
@@ -202,15 +203,19 @@ export function HomeScreen() {
         imageUrl: childMarkerImage,
         imageSize: { width: 78, height: 77 },
       },
-      {
+    ]
+    if (!isChild) {
+      result.push({
         id: 'school',
         position: SAFE_PLACE_POSITION,
         imageUrl: homeMarkerIcon,
         imageSize: { width: 45, height: 55 },
-      },
-      ...places.map((place) => ({ id: place.id, position: place.position })),
-    ]
-    if (myPosition)
+      })
+      result.push(
+        ...places.map((place) => ({ id: place.id, position: place.position })),
+      )
+    }
+    if (!isChild && myPosition)
       result.push({
         id: 'me',
         position: myPosition,
@@ -218,7 +223,7 @@ export function HomeScreen() {
         imageSize: { width: 44, height: 44 },
       })
     return result
-  }, [childMarkerImage, childPosition, myPosition, places])
+  }, [childMarkerImage, childPosition, isChild, myPosition, places])
 
   const closeCategory = () => {
     setSelectedCategory(null)
@@ -232,7 +237,7 @@ export function HomeScreen() {
         <div className="flex h-10 items-center justify-between">
           <img src={headerLogo} alt="아이봄" className="h-[34px] w-auto" />
           <div className="flex items-center gap-4">
-            <PhoneCallButton />
+            {!isChild && <PhoneCallButton />}
             <button type="button" aria-label="알림">
               <img src={notificationIcon} className="h-7 w-7" alt="" />
             </button>
@@ -240,25 +245,27 @@ export function HomeScreen() {
         </div>
       </header>
 
-      <div className="relative z-30 h-0 w-full">
-        <div className="no-scrollbar absolute inset-x-0 top-2 flex gap-1.5 overflow-x-auto px-4 py-2 pb-1">
-          {categories.map((category) => (
-            <button
-              key={category}
-              type="button"
-              onClick={() => {
-                if (selectedCategory === category) closeCategory()
-                else {
-                  setSelectedCategory(category)
-                }
-              }}
-              className={`shrink-0 rounded-full border px-3 py-[7px] text-[11px] shadow-sm transition-colors ${selectedCategory === category ? 'border-main-yellow bg-main-yellow font-semibold text-white' : 'border-neutral-300 bg-sub-cream text-neutral-900'}`}
-            >
-              {category}
-            </button>
-          ))}
+      {!isChild && (
+        <div className="relative z-30 h-0 w-full">
+          <div className="no-scrollbar absolute inset-x-0 top-2 flex gap-1.5 overflow-x-auto px-4 py-2 pb-1">
+            {categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => {
+                  if (selectedCategory === category) closeCategory()
+                  else {
+                    setSelectedCategory(category)
+                  }
+                }}
+                className={`shrink-0 rounded-full border px-3 py-[7px] text-[11px] shadow-sm transition-colors ${selectedCategory === category ? 'border-main-yellow bg-main-yellow font-semibold text-white' : 'border-neutral-300 bg-sub-cream text-neutral-900'}`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <section className="relative min-h-0 flex-1">
         <KakaoMap
@@ -268,32 +275,34 @@ export function HomeScreen() {
           onBoundsChange={setMapBounds}
         />
 
-        <div className="absolute left-3 top-20 z-10 flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={() => setMapCenter(childPosition)}
-            className="flex flex-col items-center gap-1 text-[11px] font-medium"
-          >
-            <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border-4 border-white bg-[#fff8d9] shadow-md">
-              <img
-                src={homeChildAvatar}
-                alt=""
-                className="h-8 w-8 object-contain"
-              />
-            </span>
-            아이 위치
-          </button>
-          <button
-            type="button"
-            onClick={() => findMyPosition()}
-            className="flex flex-col items-center gap-1 text-[11px] font-medium"
-          >
-            <span className="grid h-12 w-12 place-items-center rounded-full border-4 border-white bg-white shadow-md">
-              <img src={homeMyLocationIcon} alt="" className="h-9 w-9" />
-            </span>
-            내 위치
-          </button>
-        </div>
+        {!isChild && (
+          <div className="absolute left-3 top-20 z-10 flex flex-col gap-4">
+            <button
+              type="button"
+              onClick={() => setMapCenter(childPosition)}
+              className="flex flex-col items-center gap-1 text-[11px] font-medium"
+            >
+              <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border-4 border-white bg-[#fff8d9] shadow-md">
+                <img
+                  src={homeChildAvatar}
+                  alt=""
+                  className="h-8 w-8 object-contain"
+                />
+              </span>
+              아이 위치
+            </button>
+            <button
+              type="button"
+              onClick={() => findMyPosition()}
+              className="flex flex-col items-center gap-1 text-[11px] font-medium"
+            >
+              <span className="grid h-12 w-12 place-items-center rounded-full border-4 border-white bg-white shadow-md">
+                <img src={homeMyLocationIcon} alt="" className="h-9 w-9" />
+              </span>
+              내 위치
+            </button>
+          </div>
+        )}
 
         {error && (
           <p className="absolute left-1/2 top-14 z-20 w-max max-w-[80%] -translate-x-1/2 rounded-full bg-red-50 px-4 py-2 text-center text-[11px] text-red-600 shadow">
@@ -301,7 +310,7 @@ export function HomeScreen() {
           </p>
         )}
 
-        {!selectedCategory && (
+        {!isChild && !selectedCategory && (
           <section className="absolute bottom-4 left-4 right-4 z-20 rounded-2xl border border-sub-mint bg-sub-cream/95 px-4 py-3 shadow-lg backdrop-blur">
             <div className="flex items-center gap-3">
               <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-[#fff4c7]">
@@ -336,7 +345,7 @@ export function HomeScreen() {
           </section>
         )}
 
-        {selectedCategory && (
+        {!isChild && selectedCategory && (
           <section
             className={`absolute inset-x-0 bottom-0 z-30 flex flex-col overflow-hidden rounded-t-[24px] bg-white shadow-[0_-8px_24px_rgba(0,0,0,.12)] transition-[height] duration-300 ${isSheetExpanded ? 'h-[88%]' : 'h-[45%]'}`}
           >

@@ -104,10 +104,14 @@ export function SafetyAreaScreen() {
       radiusM: 100,
       riskScore: item.accidentCount,
       grade: '사고다발지역',
+      epdo: 0,
       accidents: item.accidentCount,
       fatalities: item.deathCount,
       serious: item.seriousInjuryCount,
       minor: item.minorInjuryCount,
+      district: '',
+      roadName: item.locationName,
+      roadType: item.accidentType,
       topAccidentType: item.accidentType,
     }))
   const visibleRiskZones =

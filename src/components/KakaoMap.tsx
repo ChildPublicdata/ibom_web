@@ -151,6 +151,7 @@ type KakaoMapProps = {
   level?: number
   markers?: KakaoMapMarker[]
   circle?: KakaoMapCircle
+  circles?: KakaoMapCircle[]
   onClick?: (coordinate: KakaoMapCoordinate) => void
   onBoundsChange?: (bounds: KakaoMapBounds) => void
 }
@@ -192,6 +193,7 @@ export function KakaoMap({
   level = 3,
   markers = [],
   circle,
+  circles = [],
   onClick,
   onBoundsChange,
 }: KakaoMapProps) {
@@ -296,25 +298,26 @@ export function KakaoMap({
         return marker
       },
     )
-    const circleInstance =
-      circle &&
-      new maps.Circle({
-        map,
-        center: new maps.LatLng(circle.center.lat, circle.center.lng),
-        radius: circle.radius,
-        strokeWeight: 2,
-        strokeColor: circle.strokeColor ?? '#2563eb',
-        strokeOpacity: circle.strokeOpacity ?? 0.8,
-        strokeStyle: circle.strokeStyle ?? 'solid',
-        fillColor: circle.fillColor ?? '#60a5fa',
-        fillOpacity: circle.fillOpacity ?? 0.2,
-      })
+    const circleInstances = [...(circle ? [circle] : []), ...circles].map(
+      (circleItem) =>
+        new maps.Circle({
+          map,
+          center: new maps.LatLng(circleItem.center.lat, circleItem.center.lng),
+          radius: circleItem.radius,
+          strokeWeight: 2,
+          strokeColor: circleItem.strokeColor ?? '#2563eb',
+          strokeOpacity: circleItem.strokeOpacity ?? 0.8,
+          strokeStyle: circleItem.strokeStyle ?? 'solid',
+          fillColor: circleItem.fillColor ?? '#60a5fa',
+          fillOpacity: circleItem.fillOpacity ?? 0.2,
+        }),
+    )
 
     return () => {
       markerInstances.forEach((marker) => marker.setMap(null))
-      circleInstance?.setMap(null)
+      circleInstances.forEach((circleInstance) => circleInstance.setMap(null))
     }
-  }, [isLoaded, markers, circle])
+  }, [isLoaded, markers, circle, circles])
 
   return (
     <div className="relative h-full w-full">
