@@ -1,21 +1,29 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import homeMarkerIcon from '@/assets/icons/home-marker.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { SetupMap } from '@/components/SetupMap'
 import { SetupHeader } from '@/components/SetupHeader'
-import { createSafeZone } from '@/lib/safetyApi'
+import { createSafeZone, updateSafeZone, type SafeZone } from '@/lib/safetyApi'
 import { useAppStore } from '@/store/useAppStore'
 
 export function SafeZoneSetupScreen() {
-  const [showGuide, setShowGuide] = useState(true)
-  const [radius, setRadius] = useState(100)
+  const { state } = useLocation()
+  const editingZone = (state as { zone?: SafeZone } | null)?.zone
+  const [showGuide, setShowGuide] = useState(!editingZone)
+  const [radius, setRadius] = useState(editingZone?.radiusM ?? 100)
+  const [name, setName] = useState(editingZone?.name ?? '내 안전구역')
   const [alertEnabled, setAlertEnabled] = useState(true)
   const [isComplete, setIsComplete] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
-  const safePlacePosition = useAppStore((state) => state.safePlacePosition)
+  const storedSafePlacePosition = useAppStore(
+    (state) => state.safePlacePosition,
+  )
+  const safePlacePosition = editingZone
+    ? { lat: editingZone.centerLat, lng: editingZone.centerLon }
+    : storedSafePlacePosition
 
   const saveZone = async () => {
     if (!safePlacePosition) {
@@ -25,12 +33,14 @@ export function SafeZoneSetupScreen() {
     setIsSaving(true)
     setError('')
     try {
-      await createSafeZone({
-        name: '내 안전구역',
+      const input = {
+        name,
         centerLat: safePlacePosition.lat,
         centerLon: safePlacePosition.lng,
         radiusM: radius,
-      })
+      }
+      if (editingZone) await updateSafeZone(editingZone.id, input)
+      else await createSafeZone(input)
       setIsComplete(true)
     } catch (saveError) {
       setError(
@@ -67,6 +77,15 @@ export function SafeZoneSetupScreen() {
           max="200"
           className="mt-2 w-full accent-[#ffd54f]"
         />
+        <label className="mt-3 block text-xs font-medium">
+          구역 이름
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="이름을 입력하세요."
+            className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-xs outline-none focus:border-main-yellow"
+          />
+        </label>
         <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">
           <div>
             <p className="text-xs font-medium">이탈 시 알림</p>
@@ -90,11 +109,15 @@ export function SafeZoneSetupScreen() {
         )}
         <button
           onClick={saveZone}
-          disabled={isSaving}
+          disabled={isSaving || !name.trim()}
           type="button"
           className="mt-3 h-11 w-full rounded-lg bg-[#ffd54f] text-xs font-semibold"
         >
-          {isSaving ? '저장 중...' : '보호구역 저장'}
+          {isSaving
+            ? '저장 중...'
+            : editingZone
+              ? '보호구역 수정'
+              : '보호구역 저장'}
         </button>
       </section>
       <BottomNavigation highlighted={showGuide} />
@@ -128,7 +151,7 @@ export function SafeZoneSetupScreen() {
             <p className="mt-4 text-sm font-semibold">설정이 완료되었습니다!</p>
             <div className="py-8 text-6xl text-[#6ed36c]">✓</div>
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => navigate(editingZone ? '/safe-places' : '/home')}
               type="button"
               className="h-11 w-full rounded-lg bg-[#ffd54f] text-xs font-semibold"
             >

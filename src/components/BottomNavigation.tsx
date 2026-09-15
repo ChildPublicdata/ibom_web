@@ -148,7 +148,14 @@ export function BottomNavigation({
           <div className="grid grid-cols-3 gap-x-4 gap-y-3">
             {!childOnly && (
               <>
-                <MenuCard icon={menuSafePlaceIcon} label={'안전장소\n설정'} />
+                <MenuCard
+                  icon={menuSafePlaceIcon}
+                  label={'안전장소\n설정'}
+                  onClick={() => {
+                    setIsMenuOpen(false)
+                    navigate('/safe-places')
+                  }}
+                />
                 <MenuCard icon={menuChildLocationIcon} label="아이 위치" />
                 <MenuCard icon={menuRouteIcon} label="안심루트" />
               </>
@@ -214,10 +221,19 @@ export function BottomNavigation({
   )
 }
 
-function MenuCard({ icon, label }: { icon: string; label: string }) {
+function MenuCard({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: string
+  label: string
+  onClick?: () => void
+}) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="flex h-[112px] flex-col items-center justify-center rounded-xl border border-neutral-100 bg-white px-2 text-center text-[15px] leading-[1.25] shadow-[0_2px_3px_rgba(0,0,0,0.16)]"
     >
       <img src={icon} alt="" className="mb-3 h-11 w-11" />

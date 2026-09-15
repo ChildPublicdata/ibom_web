@@ -29,12 +29,34 @@ import {
   type SafetyBell,
   type TrafficAccident,
 } from '@/lib/safetyApi'
+import {
+  searchPlacesInBounds,
+  type KakaoPlace,
+  type PlaceSearchKind,
+} from '@/lib/kakaoPlaces'
 
 const CHILD_POSITION = { lat: 37.3943, lng: 126.9568 }
-const categories = ['소아과', '병원', '약국', '경찰서', '어린이보호구역']
+const categories: PlaceSearchKind[] = [
+  '소아과',
+  '병원',
+  '약국',
+  '경찰서',
+  '어린이보호구역',
+]
+
+function formatDistance(meters: number) {
+  return meters < 1000
+    ? `${meters.toLocaleString()}m`
+    : `${(meters / 1000).toFixed(1)}km`
+}
 
 export function SafetyAreaScreen() {
   const [selectedRisk, setSelectedRisk] = useState<RiskZone | null>(null)
+  const [selectedCategory, setSelectedCategory] =
+    useState<PlaceSearchKind | null>(null)
+  const [places, setPlaces] = useState<KakaoPlace[]>([])
+  const [isPlaceLoading, setIsPlaceLoading] = useState(false)
+  const [placeError, setPlaceError] = useState('')
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
   const [mapCenter, setMapCenter] = useState(CHILD_POSITION)
   const [mapBounds, setMapBounds] = useState<KakaoMapBounds | null>(null)
@@ -87,6 +109,34 @@ export function SafetyAreaScreen() {
       })
   }, [mapBounds])
 
+  useEffect(() => {
+    if (!selectedCategory || !mapBounds) return
+    let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsPlaceLoading(true)
+    setPlaceError('')
+    searchPlacesInBounds(selectedCategory, mapBounds)
+      .then((result) => {
+        if (!cancelled) setPlaces(result)
+      })
+      .catch((searchError) => {
+        if (!cancelled) {
+          setPlaces([])
+          setPlaceError(
+            searchError instanceof Error
+              ? searchError.message
+              : '장소를 검색하지 못했습니다.',
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsPlaceLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [mapBounds, selectedCategory])
+
   const isVisible = (lat: number, lng: number) =>
     !mapBounds ||
     (lat >= mapBounds.southWest.lat &&
@@ -136,6 +186,8 @@ export function SafetyAreaScreen() {
       imageUrl: riskAreaMarker,
       imageSize: { width: 52, height: 52 },
       onClick: () => {
+        setSelectedCategory(null)
+        setPlaces([])
         setSelectedRisk(zone)
         setMapCenter({ lat: zone.lat, lng: zone.lng })
       },
@@ -158,7 +210,18 @@ export function SafetyAreaScreen() {
         id: `bell-${item.id}`,
         position: { lat: item.lat, lng: item.lon },
       })),
+    ...places.map((place) => ({
+      id: `place-${place.id}`,
+      position: place.position,
+    })),
   ]
+
+  const closeCategory = () => {
+    setSelectedCategory(null)
+    setPlaces([])
+    setPlaceError('')
+    setIsSheetExpanded(false)
+  }
 
   const accidentItems = selectedRisk
     ? [
@@ -192,7 +255,15 @@ export function SafetyAreaScreen() {
             <button
               key={category}
               type="button"
-              className="shrink-0 rounded-full border border-neutral-300 bg-sub-cream px-3 py-[7px] text-[11px] text-neutral-900 shadow-sm"
+              onClick={() => {
+                if (selectedCategory === category) closeCategory()
+                else {
+                  setSelectedRisk(null)
+                  setIsSheetExpanded(false)
+                  setSelectedCategory(category)
+                }
+              }}
+              className={`shrink-0 rounded-full border px-3 py-[7px] text-[11px] shadow-sm transition-colors ${selectedCategory === category ? 'border-main-yellow bg-main-yellow font-semibold text-white' : 'border-neutral-300 bg-sub-cream text-neutral-900'}`}
             >
               {category}
             </button>
@@ -246,7 +317,7 @@ export function SafetyAreaScreen() {
           </button>
         </div>
 
-        {!selectedRisk && (
+        {!selectedRisk && !selectedCategory && (
           <section
             className={`absolute bottom-4 left-4 right-4 z-20 rounded-2xl px-4 py-3 shadow-lg ${isChildInside === false ? 'bg-main-orange' : 'bg-main-yellow'}`}
           >
@@ -327,6 +398,96 @@ export function SafetyAreaScreen() {
                   </span>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {selectedCategory && (
+          <section
+            className={`absolute inset-x-0 bottom-0 z-30 flex flex-col overflow-hidden rounded-t-[24px] bg-white shadow-[0_-8px_24px_rgba(0,0,0,.12)] transition-[height] duration-300 ${isSheetExpanded ? 'h-[88%]' : 'h-[45%]'}`}
+          >
+            <div className="shrink-0 bg-white">
+              <button
+                type="button"
+                aria-label={
+                  isSheetExpanded ? '장소 목록 축소' : '장소 목록 확대'
+                }
+                className="flex h-7 w-full touch-none items-center justify-center"
+                onPointerDown={(event) => {
+                  sheetPointerY.current = event.clientY
+                }}
+                onPointerUp={(event) => {
+                  if (sheetPointerY.current !== null) {
+                    const distance = event.clientY - sheetPointerY.current
+                    if (distance < -30) setIsSheetExpanded(true)
+                    else if (distance > 30) setIsSheetExpanded(false)
+                    else setIsSheetExpanded((expanded) => !expanded)
+                  }
+                  sheetPointerY.current = null
+                }}
+              >
+                <span className="h-1 w-10 rounded-full bg-slate-200" />
+              </button>
+              <div className="flex items-center border-b px-4 py-2.5">
+                <button
+                  type="button"
+                  onClick={closeCategory}
+                  aria-label="뒤로가기"
+                  className="mr-4 text-xl text-slate-500"
+                >
+                  ‹
+                </button>
+                <h2 className="text-sm font-bold">{selectedCategory}</h2>
+                <button
+                  type="button"
+                  onClick={closeCategory}
+                  aria-label="닫기"
+                  className="ml-auto text-xl text-slate-500"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {isPlaceLoading && (
+                <p className="py-7 text-center text-xs text-slate-400">
+                  장소를 찾고 있어요...
+                </p>
+              )}
+              {!isPlaceLoading && placeError && (
+                <p className="px-5 py-7 text-center text-xs text-red-500">
+                  {placeError}
+                </p>
+              )}
+              {!isPlaceLoading && !placeError && places.length === 0 && (
+                <p className="py-7 text-center text-xs text-slate-400">
+                  검색 결과가 없습니다.
+                </p>
+              )}
+              {!isPlaceLoading &&
+                places.map((place) => (
+                  <a
+                    key={place.id}
+                    href={place.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block border-b px-5 py-3"
+                  >
+                    <p className="text-xs font-bold">
+                      {place.name}
+                      <span className="ml-1.5 font-normal text-point-blue">
+                        {formatDistance(place.distanceMeters)}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-[10px] text-slate-400">
+                      {place.address}
+                    </p>
+                    <p className="mt-1 text-[10px] text-slate-400">
+                      {place.category}
+                      {place.phone ? ` · ${place.phone}` : ''}
+                    </p>
+                  </a>
+                ))}
             </div>
           </section>
         )}
