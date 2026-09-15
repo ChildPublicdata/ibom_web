@@ -132,7 +132,7 @@ export function BottomNavigation({
             <p className="text-base font-bold tracking-[-0.03em]">
               {session?.name ?? '꼬꼬맘'}
             </p>
-            <p className="mt-1 text-sm text-neutral-400">대전시</p>
+            <p className="mt-1 text-sm text-neutral-400">안양시</p>
           </div>
           <button
             type="button"

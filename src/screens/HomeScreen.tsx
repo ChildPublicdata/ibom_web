@@ -33,8 +33,8 @@ import {
 import { useAppStore } from '@/store/useAppStore'
 
 // 자녀 위치 API 연결 전 기본 위치입니다. 이후 서버에서 받은 최신 좌표로 교체합니다.
-const FALLBACK_CHILD_POSITION = { lat: 36.325, lng: 127.4214 }
-const SAFE_PLACE_POSITION = { lat: 36.3261, lng: 127.4199 }
+const FALLBACK_CHILD_POSITION = { lat: 37.3943, lng: 126.9568 }
+const SAFE_PLACE_POSITION = { lat: 37.3954, lng: 126.9553 }
 const categories: PlaceSearchKind[] = [
   '소아과',
   '병원',

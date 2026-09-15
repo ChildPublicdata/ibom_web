@@ -223,5 +223,5 @@ export type TrafficAccident = {
 
 export const listTrafficAccidents = () =>
   apiRequest<Page<TrafficAccident>>(
-    '/api/traffic-accidents?sido=%EB%8C%80%EC%A0%84%EA%B4%91%EC%97%AD%EC%8B%9C&page=0&size=1000',
+    '/api/traffic-accidents?sido=%EA%B2%BD%EA%B8%B0%EB%8F%84&page=0&size=1000',
   )

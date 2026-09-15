@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { redeemFamilyCode } from '@/lib/familyApi'
+import { useAppStore } from '@/store/useAppStore'
 
 export function FamilyCodeInputScreen() {
   const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [connectedChild, setConnectedChild] = useState('')
+  const setSelectedChildId = useAppStore((state) => state.setSelectedChildId)
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -16,7 +17,11 @@ export function FamilyCodeInputScreen() {
     setError('')
     try {
       const response = await redeemFamilyCode(code)
-      setConnectedChild(response.childName)
+      setSelectedChildId(String(response.childId))
+      navigate('/family-connected', {
+        replace: true,
+        state: { childName: response.childName },
+      })
     } catch (redeemError) {
       setError(
         redeemError instanceof Error
@@ -40,45 +45,28 @@ export function FamilyCodeInputScreen() {
           자녀 기기에 표시된 6자리 숫자 코드입니다.
         </p>
       </div>
-      {connectedChild ? (
-        <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <p className="text-lg font-semibold">
-            {connectedChild} 자녀와 연결되었어요!
-          </p>
-        </div>
-      ) : (
-        <form onSubmit={submit} className="flex flex-1 flex-col pt-24">
-          <input
-            aria-label="6자리 가족 코드"
-            inputMode="numeric"
-            maxLength={6}
-            value={code}
-            onChange={(event) =>
-              setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
-            }
-            className="h-14 w-full rounded-xl border border-slate-200 px-4 text-center text-2xl tracking-[0.25em] outline-none focus:border-[#ffd54f]"
-          />
-          {error && (
-            <p className="mt-3 text-center text-xs text-red-500">{error}</p>
-          )}
-          <button
-            type="submit"
-            disabled={code.length !== 6 || isSubmitting}
-            className="mt-auto h-14 w-full rounded-[18px] bg-[#ffd54f] text-sm font-semibold disabled:bg-neutral-300 disabled:text-white"
-          >
-            {isSubmitting ? '연결 중...' : '완료'}
-          </button>
-        </form>
-      )}
-      {connectedChild && (
+      <form onSubmit={submit} className="flex flex-1 flex-col pt-24">
+        <input
+          aria-label="6자리 가족 코드"
+          inputMode="numeric"
+          maxLength={6}
+          value={code}
+          onChange={(event) =>
+            setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+          }
+          className="h-14 w-full rounded-xl border border-slate-200 px-4 text-center text-2xl tracking-[0.25em] outline-none focus:border-[#ffd54f]"
+        />
+        {error && (
+          <p className="mt-3 text-center text-xs text-red-500">{error}</p>
+        )}
         <button
-          type="button"
-          onClick={() => navigate('/safe-place-setup')}
-          className="h-14 w-full rounded-[18px] bg-[#ffd54f] text-sm font-semibold"
+          type="submit"
+          disabled={code.length !== 6 || isSubmitting}
+          className="mt-auto h-14 w-full rounded-[18px] bg-[#ffd54f] text-sm font-semibold disabled:bg-neutral-300 disabled:text-white"
         >
-          확인
+          {isSubmitting ? '연결 중...' : '완료'}
         </button>
-      )}
+      </form>
     </main>
   )
 }

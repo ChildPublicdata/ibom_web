@@ -30,7 +30,7 @@ import {
   type TrafficAccident,
 } from '@/lib/safetyApi'
 
-const CHILD_POSITION = { lat: 36.325, lng: 127.4214 }
+const CHILD_POSITION = { lat: 37.3943, lng: 126.9568 }
 const categories = ['소아과', '병원', '약국', '경찰서', '어린이보호구역']
 
 export function SafetyAreaScreen() {

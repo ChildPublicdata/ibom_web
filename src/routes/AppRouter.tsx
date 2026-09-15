@@ -14,6 +14,7 @@ import { LoginScreen } from '@/screens/LoginScreen'
 import { FamilyCodeInputScreen } from '@/screens/FamilyCodeInputScreen'
 import { RequireAuth } from '@/components/RequireAuth'
 import { AiModeScreen } from '@/screens/AiModeScreen'
+import { FamilyConnectedScreen } from '@/screens/FamilyConnectedScreen'
 
 export function AppRouter() {
   return (
@@ -38,6 +39,14 @@ export function AppRouter() {
           element={
             <RequireAuth role="PARENT">
               <FamilyCodeInputScreen />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/family-connected"
+          element={
+            <RequireAuth role="PARENT">
+              <FamilyConnectedScreen />
             </RequireAuth>
           }
         />

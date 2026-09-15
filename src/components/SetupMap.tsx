@@ -13,7 +13,7 @@ type SetupMapProps = {
   showPin?: boolean
 }
 
-const fallbackLocation = { lat: 37.5665, lng: 126.978 }
+const fallbackLocation = { lat: 37.3943, lng: 126.9568 }
 
 export function SetupMap({
   circleRadius,
