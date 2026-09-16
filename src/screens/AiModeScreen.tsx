@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import headerLogo from '@/assets/header-logo.svg'
-import notificationIcon from '@/assets/icons/notification.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import riskAreaMarker from '@/assets/icons/risk-area-marker.svg'
 import childStationary from '@/assets/child-motion/child-stationary.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { PhoneCallButton } from '@/components/CallModal'
+import { NotificationButton } from '@/components/NotificationButton'
 import {
   KakaoMap,
   type KakaoMapBounds,
@@ -17,6 +17,7 @@ import {
   listHazardGrids,
   listRiskZones,
   type AiExplanation,
+  type HazardGrid,
   type RiskZone,
 } from '@/lib/safetyApi'
 
@@ -42,6 +43,23 @@ const gradeNumber = (grade: string) => {
 
 const zoneColor = (grade: string) => gradeStyles[gradeNumber(grade) - 1].color
 
+function gridBounds(grid: HazardGrid) {
+  const halfSize = grid.sizeM / 2
+  const latitudeDelta = halfSize / 111_320
+  const longitudeDelta =
+    halfSize / (111_320 * Math.cos((grid.lat * Math.PI) / 180))
+  return {
+    southWest: {
+      lat: grid.lat - latitudeDelta,
+      lng: grid.lng - longitudeDelta,
+    },
+    northEast: {
+      lat: grid.lat + latitudeDelta,
+      lng: grid.lng + longitudeDelta,
+    },
+  }
+}
+
 export function AiModeScreen() {
   const [showLegend, setShowLegend] = useState(false)
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
@@ -49,6 +67,7 @@ export function AiModeScreen() {
   const [mapCenter, setMapCenter] = useState<KakaoMapCoordinate>(MAP_CENTER)
   const [mapBounds, setMapBounds] = useState<KakaoMapBounds | null>(null)
   const [zones, setZones] = useState<RiskZone[]>([])
+  const [grids, setGrids] = useState<HazardGrid[]>([])
   const [gradeCounts, setGradeCounts] = useState([0, 0, 0, 0, 0])
   const [selectedGrade, setSelectedGrade] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
@@ -81,6 +100,7 @@ export function AiModeScreen() {
       .then(([riskZones, grids]) => {
         if (cancelled) return
         setZones(riskZones)
+        setGrids(grids)
         const counts = [0, 0, 0, 0, 0]
         grids.forEach((grid) => {
           counts[gradeNumber(grid.grade) - 1] += 1
@@ -134,9 +154,7 @@ export function AiModeScreen() {
           <img src={headerLogo} alt="아이봄" className="h-[34px] w-auto" />
           <div className="flex items-center gap-4">
             <PhoneCallButton />
-            <button type="button" aria-label="알림">
-              <img src={notificationIcon} className="h-7 w-7" alt="" />
-            </button>
+            <NotificationButton />
           </div>
         </div>
       </header>
@@ -153,6 +171,13 @@ export function AiModeScreen() {
             strokeOpacity: 0.95,
             fillColor: zoneColor(zone.grade),
             fillOpacity: 0.35,
+          }))}
+          rectangles={grids.map((grid) => ({
+            ...gridBounds(grid),
+            strokeColor: zoneColor(grid.grade),
+            strokeOpacity: 0.65,
+            fillColor: zoneColor(grid.grade),
+            fillOpacity: gradeNumber(grid.grade) === 1 ? 0.28 : 0.18,
           }))}
           onBoundsChange={setMapBounds}
         />

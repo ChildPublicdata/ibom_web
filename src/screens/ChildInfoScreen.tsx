@@ -4,27 +4,15 @@ import { signup } from '@/lib/authApi'
 import { saveAuthSession } from '@/lib/authStorage'
 import { useAppStore } from '@/store/useAppStore'
 
-function formatPhoneNumber(value: string) {
-  const numbers = value.replace(/\D/g, '').slice(0, 11)
-  if (numbers.length <= 3) return numbers
-  if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`
-  return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`
-}
-
 export function ChildInfoScreen() {
   const navigate = useNavigate()
   const selectedRole = useAppStore((state) => state.selectedRole)
   const signupDraft = useAppStore((state) => state.signupDraft)
   const [name, setName] = useState('')
-  const [birthDate, setBirthDate] = useState('')
-  const [phoneNumber, setPhoneNumber] = useState(signupDraft?.phoneNumber ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const isComplete =
-    name.trim().length > 0 &&
-    birthDate.length === 6 &&
-    phoneNumber.replace(/\D/g, '').length === 11
+  const isComplete = name.trim().length > 0
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -34,7 +22,6 @@ export function ChildInfoScreen() {
     try {
       const session = await signup({
         ...signupDraft,
-        phoneNumber,
         name: name.trim(),
         role: selectedRole,
       })
@@ -58,13 +45,15 @@ export function ChildInfoScreen() {
     <main className="flex min-h-[100svh] w-full max-w-[390px] flex-col bg-white px-4 pb-6 pt-20 text-neutral-950">
       <div>
         <h1 className="text-center text-[28px] font-bold leading-[1.45] tracking-[-0.05em]">
-          <span className="text-[#ff9800]">
-            {selectedRole === 'PARENT' ? '부모의 정보' : '자녀의 정보'}
-          </span>
-          를
+          <span className="text-[#ff9800]">내 정보</span>를
           <br />
           입력해 주세요!
         </h1>
+        <p className="mt-3 text-center text-xs text-neutral-400">
+          {selectedRole === 'CHILD'
+            ? '자녀 계정에서 사용할 이름을 입력해 주세요.'
+            : '부모 계정에서 사용할 이름을 입력해 주세요.'}
+        </p>
         <p className="mt-4 text-right text-[10px] text-[#ff6b6b]">
           *은 필수 입력 항목입니다
         </p>
@@ -80,36 +69,6 @@ export function ChildInfoScreen() {
               onChange={(event) => setName(event.target.value)}
               autoComplete="name"
               className="mt-2 h-12 w-full rounded-xl border border-neutral-200 px-4 text-sm font-normal outline-none transition focus:border-[#ffd54f]"
-            />
-          </label>
-
-          <label className="block text-xs font-semibold">
-            생년월일<span className="text-red-500">*</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={birthDate}
-              onChange={(event) =>
-                setBirthDate(event.target.value.replace(/\D/g, '').slice(0, 6))
-              }
-              placeholder="YYMMDD"
-              autoComplete="bday"
-              className="mt-2 h-12 w-full rounded-xl border border-neutral-200 px-4 text-sm font-normal outline-none transition placeholder:text-neutral-400 focus:border-[#ffd54f]"
-            />
-          </label>
-
-          <label className="block text-xs font-semibold">
-            전화번호<span className="text-red-500">*</span>
-            <input
-              type="tel"
-              inputMode="numeric"
-              value={phoneNumber}
-              onChange={(event) =>
-                setPhoneNumber(formatPhoneNumber(event.target.value))
-              }
-              placeholder="-까지 입력 해 주세요"
-              autoComplete="tel"
-              className="mt-2 h-12 w-full rounded-xl border border-neutral-200 px-4 text-sm font-normal outline-none transition placeholder:text-neutral-400 focus:border-[#ffd54f]"
             />
           </label>
         </div>

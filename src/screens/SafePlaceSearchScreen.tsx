@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import headerLogo from '@/assets/header-logo.svg'
-import notificationIcon from '@/assets/icons/notification.svg'
 import searchIcon from '@/assets/icons/search.svg'
 import { PhoneCallButton } from '@/components/CallModal'
+import { NotificationButton } from '@/components/NotificationButton'
 import { searchPlacesByKeyword, type KakaoPlace } from '@/lib/kakaoPlaces'
 import { listSafePlaces, type SafePlace } from '@/lib/safetyApi'
 import { useAppStore } from '@/store/useAppStore'
@@ -77,7 +77,7 @@ export function SafePlaceSearchScreen() {
           <img src={headerLogo} alt="아이봄" className="h-[34px] w-auto" />
           <div className="flex items-center gap-5">
             <PhoneCallButton />
-            <img src={notificationIcon} alt="알림" className="h-7 w-7" />
+            <NotificationButton />
           </div>
         </div>
         <div className="mt-3 flex items-center">

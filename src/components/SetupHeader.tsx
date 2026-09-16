@@ -1,6 +1,6 @@
 import headerLogo from '@/assets/header-logo.svg'
-import notificationIcon from '@/assets/icons/notification.svg'
 import { PhoneCallButton } from '@/components/CallModal'
+import { NotificationButton } from '@/components/NotificationButton'
 
 type SetupHeaderProps = {
   title: string
@@ -14,11 +14,7 @@ export function SetupHeader({ title, description }: SetupHeaderProps) {
         <img src={headerLogo} alt="아이봄" className="h-7 w-auto" />
         <div className="flex items-center gap-5">
           <PhoneCallButton />
-          <img
-            alt="알림"
-            className="h-[22px] w-[22px] -translate-y-px"
-            src={notificationIcon}
-          />
+          <NotificationButton className="h-[22px] w-[22px] -translate-y-px" />
         </div>
       </div>
       <div className="mt-2 flex items-start gap-5">

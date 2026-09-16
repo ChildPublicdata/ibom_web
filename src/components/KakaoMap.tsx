@@ -105,6 +105,19 @@ declare global {
       })
       setMap(map: Map | null): void
     }
+    class Rectangle {
+      constructor(options: {
+        map: Map
+        bounds: LatLngBounds
+        strokeWeight: number
+        strokeColor: string
+        strokeOpacity: number
+        strokeStyle: string
+        fillColor: string
+        fillOpacity: number
+      })
+      setMap(map: Map | null): void
+    }
     type MouseEvent = { latLng: LatLng }
     const event: {
       addListener(
@@ -146,12 +159,23 @@ export type KakaoMapCircle = {
   fillOpacity?: number
 }
 
+export type KakaoMapRectangle = {
+  southWest: KakaoMapCoordinate
+  northEast: KakaoMapCoordinate
+  strokeColor?: string
+  strokeOpacity?: number
+  strokeStyle?: string
+  fillColor?: string
+  fillOpacity?: number
+}
+
 type KakaoMapProps = {
   center: KakaoMapCoordinate
   level?: number
   markers?: KakaoMapMarker[]
   circle?: KakaoMapCircle
   circles?: KakaoMapCircle[]
+  rectangles?: KakaoMapRectangle[]
   onClick?: (coordinate: KakaoMapCoordinate) => void
   onBoundsChange?: (bounds: KakaoMapBounds) => void
 }
@@ -194,6 +218,7 @@ export function KakaoMap({
   markers = [],
   circle,
   circles = [],
+  rectangles = [],
   onClick,
   onBoundsChange,
 }: KakaoMapProps) {
@@ -298,6 +323,22 @@ export function KakaoMap({
         return marker
       },
     )
+    const rectangleInstances = rectangles.map(
+      (rectangle) =>
+        new maps.Rectangle({
+          map,
+          bounds: new maps.LatLngBounds(
+            new maps.LatLng(rectangle.southWest.lat, rectangle.southWest.lng),
+            new maps.LatLng(rectangle.northEast.lat, rectangle.northEast.lng),
+          ),
+          strokeWeight: 1,
+          strokeColor: rectangle.strokeColor ?? '#2563eb',
+          strokeOpacity: rectangle.strokeOpacity ?? 0.7,
+          strokeStyle: rectangle.strokeStyle ?? 'solid',
+          fillColor: rectangle.fillColor ?? '#60a5fa',
+          fillOpacity: rectangle.fillOpacity ?? 0.2,
+        }),
+    )
     const circleInstances = [...(circle ? [circle] : []), ...circles].map(
       (circleItem) =>
         new maps.Circle({
@@ -315,9 +356,10 @@ export function KakaoMap({
 
     return () => {
       markerInstances.forEach((marker) => marker.setMap(null))
+      rectangleInstances.forEach((rectangle) => rectangle.setMap(null))
       circleInstances.forEach((circleInstance) => circleInstance.setMap(null))
     }
-  }, [isLoaded, markers, circle, circles])
+  }, [isLoaded, markers, circle, circles, rectangles])
 
   return (
     <div className="relative h-full w-full">

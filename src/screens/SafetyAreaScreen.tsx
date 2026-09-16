@@ -4,11 +4,12 @@ import childStationary from '@/assets/child-motion/child-stationary.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import homeMarkerIcon from '@/assets/icons/home-marker.svg'
-import notificationIcon from '@/assets/icons/notification.svg'
+import cctvIcon from '@/assets/icons/cctv.svg'
 import riskAreaMarker from '@/assets/icons/risk-area-marker.svg'
 import safeAreaStatusIcon from '@/assets/icons/safe-area-status.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { PhoneCallButton } from '@/components/CallModal'
+import { NotificationButton } from '@/components/NotificationButton'
 import {
   KakaoMap,
   type KakaoMapBounds,
@@ -195,6 +196,9 @@ export function SafetyAreaScreen() {
     ...facilities.map((facility) => ({
       id: facility.facilityId,
       position: { lat: facility.lat, lng: facility.lng },
+      imageUrl: facility.type === 'CCTV' ? cctvIcon : undefined,
+      imageSize:
+        facility.type === 'CCTV' ? { width: 36, height: 36 } : undefined,
     })),
     ...(facilities.length === 0
       ? cctv
@@ -202,6 +206,8 @@ export function SafetyAreaScreen() {
           .map((item) => ({
             id: `cctv-${item.id}`,
             position: { lat: item.lat, lng: item.lon },
+            imageUrl: cctvIcon,
+            imageSize: { width: 36, height: 36 },
           }))
       : []),
     ...safetyBells
@@ -242,9 +248,7 @@ export function SafetyAreaScreen() {
           <img src={headerLogo} alt="아이봄" className="h-[34px] w-auto" />
           <div className="flex items-center gap-4">
             <PhoneCallButton />
-            <button type="button" aria-label="알림">
-              <img src={notificationIcon} className="h-7 w-7" alt="" />
-            </button>
+            <NotificationButton />
           </div>
         </div>
       </header>

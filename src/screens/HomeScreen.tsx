@@ -3,7 +3,6 @@ import headerLogo from '@/assets/header-logo.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import homeMarkerIcon from '@/assets/icons/home-marker.svg'
-import notificationIcon from '@/assets/icons/notification.svg'
 import childDown from '@/assets/child-motion/child-down.svg'
 import childDownLeft from '@/assets/child-motion/child-down-left.svg'
 import childDownRight from '@/assets/child-motion/child-down-right.svg'
@@ -13,6 +12,7 @@ import childUpLeft from '@/assets/child-motion/child-up-left.svg'
 import childUpRight from '@/assets/child-motion/child-up-right.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { PhoneCallButton } from '@/components/CallModal'
+import { NotificationButton } from '@/components/NotificationButton'
 import {
   KakaoMap,
   type KakaoMapBounds,
@@ -238,9 +238,7 @@ export function HomeScreen() {
           <img src={headerLogo} alt="아이봄" className="h-[34px] w-auto" />
           <div className="flex items-center gap-4">
             {!isChild && <PhoneCallButton />}
-            <button type="button" aria-label="알림">
-              <img src={notificationIcon} className="h-7 w-7" alt="" />
-            </button>
+            <NotificationButton />
           </div>
         </div>
       </header>
