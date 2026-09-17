@@ -20,7 +20,6 @@ import {
   type KakaoMapMarker,
 } from '@/components/KakaoMap'
 import {
-  addressFromCoordinate,
   searchPlacesInBounds,
   type KakaoPlace,
   type PlaceSearchKind,
@@ -98,22 +97,17 @@ function movementBetween(
 
 function formatUpdatedAt(updatedAt: string | null) {
   if (!updatedAt) return '위치 시간 확인 중'
-  const date = new Date(updatedAt)
+  const hasTimeZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(updatedAt)
+  const date = new Date(hasTimeZone ? updatedAt : `${updatedAt}Z`)
   if (Number.isNaN(date.getTime())) return '최신 위치'
   return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: 'numeric',
     minute: '2-digit',
   }).format(date)
-}
-
-function areaNameFromAddress(address: string) {
-  const area = address
-    .split(' ')
-    .find((part) => /[동읍면리]$/.test(part) && part.length > 1)
-  return area ?? address
 }
 
 export function HomeScreen() {
@@ -137,7 +131,6 @@ export function HomeScreen() {
   const [childUpdatedAt, setChildUpdatedAt] = useState<string | null>(null)
   const [safeZones, setSafeZones] = useState<SafeZone[]>([])
   const [nearbyFacilities, setNearbyFacilities] = useState<Facility[]>([])
-  const [fallbackAreaName, setFallbackAreaName] = useState('현재 위치')
   const [motionFrame, setMotionFrame] = useState(0)
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
   const sheetPointerY = useRef<number | null>(null)
@@ -239,11 +232,6 @@ export function HomeScreen() {
       .catch(() => {
         if (!cancelled) setNearbyFacilities([])
       })
-    addressFromCoordinate(childPosition)
-      .then((address) => {
-        if (!cancelled) setFallbackAreaName(areaNameFromAddress(address))
-      })
-      .catch(() => undefined)
     return () => {
       cancelled = true
     }
@@ -289,8 +277,24 @@ export function HomeScreen() {
       .sort((a, b) => a.distance - b.distance)[0]?.facility
 
     if (nearestSchoolZone) return `${nearestSchoolZone.name} 주변에 있어요.`
-    return `${fallbackAreaName} 주변에 있어요.`
-  }, [childPosition, fallbackAreaName, nearbyFacilities, safeZones])
+
+    const nearestSafeZone = safeZones
+      .map((zone) => ({
+        zone,
+        distance: Math.max(
+          0,
+          movementBetween(childPosition, {
+            lat: zone.centerLat,
+            lng: zone.centerLon,
+          }).distance - zone.radiusM,
+        ),
+      }))
+      .sort((a, b) => a.distance - b.distance)[0]
+
+    if (nearestSafeZone)
+      return `${nearestSafeZone.zone.name}에서 ${formatDistance(Math.round(nearestSafeZone.distance))} 떨어져 있어요.`
+    return '등록된 안전구역에 없어요.'
+  }, [childPosition, nearbyFacilities, safeZones])
 
   const findMyPosition = (moveMap = true) => {
     if (!navigator.geolocation) {

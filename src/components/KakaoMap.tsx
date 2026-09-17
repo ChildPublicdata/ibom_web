@@ -352,13 +352,8 @@ export function KakaoMap({
       character.src = trackedMarker.imageUrl
       character.alt = ''
       character.className =
-        'absolute left-1/2 top-0 h-[76px] w-[76px] -translate-x-1/2 object-contain drop-shadow-md'
+        'absolute left-1/2 top-[6px] h-[66px] w-[66px] -translate-x-1/2 object-contain drop-shadow-md'
       content.appendChild(character)
-
-      const pointer = document.createElement('span')
-      pointer.className =
-        'absolute left-1/2 top-[67px] h-5 w-5 -translate-x-1/2 rotate-45 border-b-[5px] border-r-[5px] border-white bg-white'
-      content.appendChild(pointer)
 
       if (trackedMarker.moving && trackedMarker.heading != null) {
         const arrow = document.createElement('span')
@@ -373,7 +368,7 @@ export function KakaoMap({
 
       const dot = document.createElement('span')
       dot.className =
-        'absolute bottom-1 left-1/2 z-20 h-6 w-6 -translate-x-1/2 rounded-full border-[4px] border-white bg-[#ef4444] shadow-md'
+        'absolute bottom-1 left-1/2 z-20 h-5 w-5 -translate-x-1/2 rounded-full border-[4px] border-white bg-[#ef4444] shadow-[0_2px_7px_rgba(15,23,42,0.35)]'
       content.appendChild(dot)
 
       trackedOverlay = new maps.CustomOverlay({
