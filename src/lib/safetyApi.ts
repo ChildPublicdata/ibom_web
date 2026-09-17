@@ -128,16 +128,26 @@ export type HazardGrid = {
   lng: number
   sizeM: number
   riskScore: number
+  level: number
+  levelName: string
   grade: string
+  color: string
   hasAccident: boolean
   accidentCount: number
   epdo: number
   fatalities: number
+  accidents2025: number
+  fatal2025: number
   cctvDistM: number
   cctvCount200m: number
   schoolZoneDistM: number
   inSchoolZone: boolean
   intersectionAccidents300m: number
+  reasons: string[]
+  locationInfo: string[]
+  guideParent: string | null
+  guideChild: string | null
+  modelNote: string
 }
 
 export const listHazardGrids = (bounds: Bounds, minRisk = 0) =>

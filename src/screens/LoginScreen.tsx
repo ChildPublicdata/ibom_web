@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import headerLogo from '@/assets/header-logo.svg'
 import { login } from '@/lib/authApi'
 import { saveAuthSession } from '@/lib/authStorage'
+import { getFamilyStatus } from '@/lib/familyApi'
 import { useAppStore } from '@/store/useAppStore'
 
 export function LoginScreen() {
@@ -28,9 +29,13 @@ export function LoginScreen() {
         return
       }
       saveAuthSession(session)
-      navigate(session.role === 'CHILD' ? '/home' : '/family-code-input', {
-        replace: true,
-      })
+      const familyStatus = await getFamilyStatus()
+      if (familyStatus.linked) navigate('/home', { replace: true })
+      else
+        navigate(
+          session.role === 'CHILD' ? '/family-code' : '/family-code-input',
+          { replace: true },
+        )
     } catch (loginError) {
       setError(
         loginError instanceof Error

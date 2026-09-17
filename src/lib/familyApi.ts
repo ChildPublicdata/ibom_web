@@ -15,6 +15,13 @@ export type ChildSummary = {
   lon: number | null
   updatedAt: string | null
 }
+export type FamilyStatusResponse = {
+  linked: boolean
+  linkedCount: number
+}
+
+export const getFamilyStatus = () =>
+  apiRequest<FamilyStatusResponse>('/api/family/status', { auth: true })
 
 export const issueFamilyCode = () =>
   apiRequest<IssueCodeResponse>('/api/family/codes', {

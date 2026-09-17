@@ -51,6 +51,27 @@ function formatDistance(meters: number) {
     : `${(meters / 1000).toFixed(1)}km`
 }
 
+function distanceInMeters(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+) {
+  const earthRadius = 6_371_000
+  const toRadians = (degree: number) => (degree * Math.PI) / 180
+  const latitudeDelta = toRadians(to.lat - from.lat)
+  const longitudeDelta = toRadians(to.lng - from.lng)
+  const startLatitude = toRadians(from.lat)
+  const endLatitude = toRadians(to.lat)
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(startLatitude) *
+      Math.cos(endLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2
+
+  return (
+    earthRadius * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+  )
+}
+
 export function SafetyAreaScreen() {
   const [selectedRisk, setSelectedRisk] = useState<RiskZone | null>(null)
   const [selectedCategory, setSelectedCategory] =
@@ -71,6 +92,7 @@ export function SafetyAreaScreen() {
   )
   const [isChildInside, setIsChildInside] = useState<boolean | null>(null)
   const sheetPointerY = useRef<number | null>(null)
+  const dismissedAutomaticRisks = useRef(new Set<string>())
 
   useEffect(() => {
     Promise.all([
@@ -109,6 +131,19 @@ export function SafetyAreaScreen() {
         setFacilities([])
       })
   }, [mapBounds])
+
+  useEffect(() => {
+    if (selectedRisk || selectedCategory) return
+    const containingZone = riskZones.find(
+      (zone) =>
+        !dismissedAutomaticRisks.current.has(zone.zoneId) &&
+        distanceInMeters(CHILD_POSITION, { lat: zone.lat, lng: zone.lng }) <=
+          zone.radiusM,
+    )
+    if (!containingZone) return
+    // 아이가 사고 다발 구역 안에 있으면 별도 마커 클릭 없이 상세창을 표시합니다.
+    setSelectedRisk(containingZone)
+  }, [riskZones, selectedCategory, selectedRisk])
 
   useEffect(() => {
     if (!selectedCategory || !mapBounds) return
@@ -190,7 +225,6 @@ export function SafetyAreaScreen() {
         setSelectedCategory(null)
         setPlaces([])
         setSelectedRisk(zone)
-        setMapCenter({ lat: zone.lat, lng: zone.lng })
       },
     })),
     ...facilities.map((facility) => ({
@@ -380,6 +414,7 @@ export function SafetyAreaScreen() {
               <button
                 type="button"
                 onClick={() => {
+                  dismissedAutomaticRisks.current.add(selectedRisk.zoneId)
                   setSelectedRisk(null)
                   setIsSheetExpanded(false)
                 }}

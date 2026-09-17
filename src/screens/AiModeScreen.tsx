@@ -29,7 +29,6 @@ const gradeStyles = [
   { grade: '2급', color: '#FF9800' },
   { grade: '3급', color: '#FFD54F' },
   { grade: '4급', color: '#4CAF50' },
-  { grade: '5급', color: '#3B82F6' },
 ]
 
 const gradeNumber = (grade: string) => {
@@ -38,8 +37,11 @@ const gradeNumber = (grade: string) => {
   if (normalized === 'CAUTION') return 2
   if (normalized === 'WATCH') return 3
   if (normalized === 'SAFE' || normalized === 'NORMAL') return 4
-  return 5
+  return 4
 }
+
+const gridGradeNumber = (grid: HazardGrid) =>
+  Math.min(4, Math.max(1, grid.level))
 
 const zoneColor = (grade: string) => gradeStyles[gradeNumber(grade) - 1].color
 
@@ -68,7 +70,7 @@ export function AiModeScreen() {
   const [mapBounds, setMapBounds] = useState<KakaoMapBounds | null>(null)
   const [zones, setZones] = useState<RiskZone[]>([])
   const [grids, setGrids] = useState<HazardGrid[]>([])
-  const [gradeCounts, setGradeCounts] = useState([0, 0, 0, 0, 0])
+  const [gradeCounts, setGradeCounts] = useState([0, 0, 0, 0])
   const [selectedGrade, setSelectedGrade] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -101,9 +103,9 @@ export function AiModeScreen() {
         if (cancelled) return
         setZones(riskZones)
         setGrids(grids)
-        const counts = [0, 0, 0, 0, 0]
+        const counts = [0, 0, 0, 0]
         grids.forEach((grid) => {
-          counts[gradeNumber(grid.grade) - 1] += 1
+          counts[gridGradeNumber(grid) - 1] += 1
         })
         setGradeCounts(counts)
         setSelectedGrade((current) => {
@@ -174,10 +176,10 @@ export function AiModeScreen() {
           }))}
           rectangles={grids.map((grid) => ({
             ...gridBounds(grid),
-            strokeColor: zoneColor(grid.grade),
+            strokeColor: gradeStyles[gridGradeNumber(grid) - 1].color,
             strokeOpacity: 0.65,
-            fillColor: zoneColor(grid.grade),
-            fillOpacity: gradeNumber(grid.grade) === 1 ? 0.28 : 0.18,
+            fillColor: gradeStyles[gridGradeNumber(grid) - 1].color,
+            fillOpacity: gridGradeNumber(grid) === 1 ? 0.28 : 0.18,
           }))}
           onBoundsChange={setMapBounds}
         />
@@ -281,7 +283,11 @@ export function AiModeScreen() {
                     <button
                       key={area.zoneId}
                       type="button"
-                      onClick={() => setSelectedArea(area)}
+                      onClick={() => {
+                        setMapCenter({ lat: area.lat, lng: area.lng })
+                        setIsSheetExpanded(false)
+                        setSelectedArea(null)
+                      }}
                       className="flex w-full items-center rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-left shadow-sm"
                     >
                       <span className="min-w-0 flex-1">
@@ -366,7 +372,6 @@ function LegendCard({
         <LegendRow color="#FF9800" label="2급 주의" />
         <LegendRow color="#FFD54F" label="3급 관찰" />
         <LegendRow color="#4CAF50" label="4급 안전" />
-        <LegendRow color="#3B82F6" label="5급 미분류" />
       </div>
     </button>
   )
@@ -406,7 +411,7 @@ function GradeSummary({
   onSelect: (grade: number) => void
 }) {
   return (
-    <div className="grid grid-cols-5 gap-1.5">
+    <div className="grid grid-cols-4 gap-1.5">
       {gradeStyles.map((item, index) => (
         <button
           type="button"
