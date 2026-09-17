@@ -20,6 +20,7 @@ import {
   type KakaoMapMarker,
 } from '@/components/KakaoMap'
 import {
+  addressFromCoordinate,
   searchPlacesInBounds,
   type KakaoPlace,
   type PlaceSearchKind,
@@ -30,11 +31,14 @@ import {
   listChildren,
   reportChildLocation,
 } from '@/lib/familyApi'
+import {
+  listFacilities,
+  listSafeZones,
+  type Facility,
+  type SafeZone,
+} from '@/lib/safetyApi'
 import { useAppStore } from '@/store/useAppStore'
 
-// 자녀 위치 API 연결 전 기본 위치입니다. 이후 서버에서 받은 최신 좌표로 교체합니다.
-const FALLBACK_CHILD_POSITION = { lat: 37.3943, lng: 126.9568 }
-const SAFE_PLACE_POSITION = { lat: 37.3954, lng: 126.9553 }
 const categories: PlaceSearchKind[] = [
   '소아과',
   '병원',
@@ -57,14 +61,67 @@ function formatDistance(meters: number) {
     : `${(meters / 1000).toFixed(1)}km`
 }
 
+function movementBetween(
+  previous: KakaoMapCoordinate,
+  current: KakaoMapCoordinate,
+) {
+  const toRadians = (degree: number) => (degree * Math.PI) / 180
+  const latitudeDelta = toRadians(current.lat - previous.lat)
+  const longitudeDelta = toRadians(current.lng - previous.lng)
+  const latitude1 = toRadians(previous.lat)
+  const latitude2 = toRadians(current.lat)
+  const distance =
+    6_371_000 *
+    2 *
+    Math.atan2(
+      Math.sqrt(
+        Math.sin(latitudeDelta / 2) ** 2 +
+          Math.cos(latitude1) *
+            Math.cos(latitude2) *
+            Math.sin(longitudeDelta / 2) ** 2,
+      ),
+      Math.sqrt(
+        1 -
+          (Math.sin(latitudeDelta / 2) ** 2 +
+            Math.cos(latitude1) *
+              Math.cos(latitude2) *
+              Math.sin(longitudeDelta / 2) ** 2),
+      ),
+    )
+  const y = Math.sin(longitudeDelta) * Math.cos(latitude2)
+  const x =
+    Math.cos(latitude1) * Math.sin(latitude2) -
+    Math.sin(latitude1) * Math.cos(latitude2) * Math.cos(longitudeDelta)
+  const heading = (Math.atan2(y, x) * 180) / Math.PI
+  return { distance, heading: (heading + 360) % 360 }
+}
+
+function formatUpdatedAt(updatedAt: string | null) {
+  if (!updatedAt) return '위치 시간 확인 중'
+  const date = new Date(updatedAt)
+  if (Number.isNaN(date.getTime())) return '최신 위치'
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function areaNameFromAddress(address: string) {
+  const area = address
+    .split(' ')
+    .find((part) => /[동읍면리]$/.test(part) && part.length > 1)
+  return area ?? address
+}
+
 export function HomeScreen() {
   const isChild = getAuthSession()?.role === 'CHILD'
-  const [childPosition, setChildPosition] = useState<KakaoMapCoordinate>(
-    FALLBACK_CHILD_POSITION,
+  const [childPosition, setChildPosition] = useState<KakaoMapCoordinate | null>(
+    null,
   )
-  const [mapCenter, setMapCenter] = useState<KakaoMapCoordinate>(
-    FALLBACK_CHILD_POSITION,
-  )
+  const [mapCenter, setMapCenter] = useState<KakaoMapCoordinate | null>(null)
   const [myPosition, setMyPosition] = useState<KakaoMapCoordinate | null>(null)
   const [selectedCategory, setSelectedCategory] =
     useState<PlaceSearchKind | null>(null)
@@ -73,11 +130,32 @@ export function HomeScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isChildMoving, setIsChildMoving] = useState(false)
+  const [childHeading, setChildHeading] = useState<number | null>(null)
+  const [childName, setChildName] = useState(
+    () => getAuthSession()?.name ?? '우리 아이',
+  )
+  const [childUpdatedAt, setChildUpdatedAt] = useState<string | null>(null)
+  const [safeZones, setSafeZones] = useState<SafeZone[]>([])
+  const [nearbyFacilities, setNearbyFacilities] = useState<Facility[]>([])
+  const [fallbackAreaName, setFallbackAreaName] = useState('현재 위치')
   const [motionFrame, setMotionFrame] = useState(0)
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
   const sheetPointerY = useRef<number | null>(null)
+  const previousChildPosition = useRef<KakaoMapCoordinate | null>(null)
   const selectedChildId = useAppStore((state) => state.selectedChildId)
   const setSelectedChildId = useAppStore((state) => state.setSelectedChildId)
+
+  const updateChildPosition = (position: KakaoMapCoordinate) => {
+    const previous = previousChildPosition.current
+    if (previous) {
+      const movement = movementBetween(previous, position)
+      const moving = movement.distance >= 3
+      setIsChildMoving(moving)
+      if (moving) setChildHeading(movement.heading)
+    }
+    previousChildPosition.current = position
+    setChildPosition(position)
+  }
 
   useEffect(() => {
     const session = getAuthSession()
@@ -86,11 +164,14 @@ export function HomeScreen() {
     if (session.role === 'CHILD') {
       if (!navigator.geolocation) return
       const watchId = navigator.geolocation.watchPosition(
-        ({ coords }) => {
+        ({ coords, timestamp }) => {
           const position = { lat: coords.latitude, lng: coords.longitude }
-          setChildPosition(position)
+          updateChildPosition(position)
           setMapCenter(position)
-          reportChildLocation(position.lat, position.lng).catch(() => undefined)
+          setChildUpdatedAt(new Date(timestamp).toISOString())
+          reportChildLocation(position.lat, position.lng)
+            .then((location) => setChildUpdatedAt(location.updatedAt))
+            .catch(() => undefined)
         },
         () => setError('현재 위치 권한을 허용해 주세요.'),
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 },
@@ -107,11 +188,13 @@ export function HomeScreen() {
           children.find((child) => String(child.childId) === selectedChildId) ??
           children[0]
         setSelectedChildId(String(selected.childId))
+        setChildName(selected.name)
         const location = await getChildLocation(selected.childId)
         if (cancelled) return
         const position = { lat: location.lat, lng: location.lon }
-        setChildPosition(position)
+        updateChildPosition(position)
         setMapCenter(position)
+        setChildUpdatedAt(location.updatedAt)
       } catch (locationError) {
         if (!cancelled)
           setError(
@@ -130,6 +213,45 @@ export function HomeScreen() {
   }, [selectedChildId, setSelectedChildId])
 
   useEffect(() => {
+    listSafeZones()
+      .then(setSafeZones)
+      .catch(() => setSafeZones([]))
+  }, [])
+
+  const childAreaKey = childPosition
+    ? `${childPosition.lat.toFixed(3)}:${childPosition.lng.toFixed(3)}`
+    : ''
+
+  useEffect(() => {
+    if (!childPosition) return
+    let cancelled = false
+    const latitudePadding = 0.012
+    const longitudePadding = 0.015
+    listFacilities({
+      swLat: childPosition.lat - latitudePadding,
+      swLng: childPosition.lng - longitudePadding,
+      neLat: childPosition.lat + latitudePadding,
+      neLng: childPosition.lng + longitudePadding,
+    })
+      .then((facilities) => {
+        if (!cancelled) setNearbyFacilities(facilities)
+      })
+      .catch(() => {
+        if (!cancelled) setNearbyFacilities([])
+      })
+    addressFromCoordinate(childPosition)
+      .then((address) => {
+        if (!cancelled) setFallbackAreaName(areaNameFromAddress(address))
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+    // 좌표가 약 100m 이상 달라졌을 때만 주변 시설과 주소를 다시 조회합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childAreaKey])
+
+  useEffect(() => {
     if (!isChildMoving) return
     const frameTimer = window.setInterval(
       () => setMotionFrame((frame) => (frame + 1) % movingFrames.length),
@@ -141,6 +263,34 @@ export function HomeScreen() {
   const childMarkerImage = isChildMoving
     ? movingFrames[motionFrame]
     : childStationary
+
+  const childLocationLabel = useMemo(() => {
+    if (!childPosition) return '위치를 확인하고 있어요.'
+    const containingSafeZone = safeZones.find(
+      (zone) =>
+        movementBetween(childPosition, {
+          lat: zone.centerLat,
+          lng: zone.centerLon,
+        }).distance <= zone.radiusM,
+    )
+    if (containingSafeZone)
+      return `${containingSafeZone.name} 안전구역에 있어요.`
+
+    const nearestSchoolZone = nearbyFacilities
+      .filter((facility) => facility.type === 'SCHOOL_ZONE' && facility.name)
+      .map((facility) => ({
+        facility,
+        distance: movementBetween(childPosition, {
+          lat: facility.lat,
+          lng: facility.lng,
+        }).distance,
+      }))
+      .filter(({ facility, distance }) => distance <= (facility.radiusM ?? 300))
+      .sort((a, b) => a.distance - b.distance)[0]?.facility
+
+    if (nearestSchoolZone) return `${nearestSchoolZone.name} 주변에 있어요.`
+    return `${fallbackAreaName} 주변에 있어요.`
+  }, [childPosition, fallbackAreaName, nearbyFacilities, safeZones])
 
   const findMyPosition = (moveMap = true) => {
     if (!navigator.geolocation) {
@@ -196,21 +346,16 @@ export function HomeScreen() {
   }, [mapBounds, selectedCategory])
 
   const markers = useMemo<KakaoMapMarker[]>(() => {
-    const result: KakaoMapMarker[] = [
-      {
-        id: 'child',
-        position: childPosition,
-        imageUrl: childMarkerImage,
-        imageSize: { width: 78, height: 77 },
-      },
-    ]
+    const result: KakaoMapMarker[] = []
     if (!isChild) {
-      result.push({
-        id: 'school',
-        position: SAFE_PLACE_POSITION,
-        imageUrl: homeMarkerIcon,
-        imageSize: { width: 45, height: 55 },
-      })
+      result.push(
+        ...safeZones.map((zone) => ({
+          id: `safe-zone-${zone.id}`,
+          position: { lat: zone.centerLat, lng: zone.centerLon },
+          imageUrl: homeMarkerIcon,
+          imageSize: { width: 45, height: 55 },
+        })),
+      )
       result.push(
         ...places.map((place) => ({ id: place.id, position: place.position })),
       )
@@ -223,7 +368,7 @@ export function HomeScreen() {
         imageSize: { width: 44, height: 44 },
       })
     return result
-  }, [childMarkerImage, childPosition, isChild, myPosition, places])
+  }, [isChild, myPosition, places, safeZones])
 
   const closeCategory = () => {
     setSelectedCategory(null)
@@ -266,18 +411,30 @@ export function HomeScreen() {
       )}
 
       <section className="relative min-h-0 flex-1">
-        <KakaoMap
-          center={mapCenter}
-          level={1}
-          markers={markers}
-          onBoundsChange={setMapBounds}
-        />
+        {mapCenter && childPosition ? (
+          <KakaoMap
+            center={mapCenter}
+            level={1}
+            markers={markers}
+            trackedMarker={{
+              position: childPosition,
+              imageUrl: childMarkerImage,
+              heading: childHeading,
+              moving: isChildMoving,
+            }}
+            onBoundsChange={setMapBounds}
+          />
+        ) : (
+          <div className="grid h-full place-items-center bg-slate-50 text-xs text-slate-400">
+            자녀 위치를 불러오고 있어요.
+          </div>
+        )}
 
         {!isChild && (
           <div className="absolute left-3 top-20 z-10 flex flex-col gap-4">
             <button
               type="button"
-              onClick={() => setMapCenter(childPosition)}
+              onClick={() => childPosition && setMapCenter(childPosition)}
               className="flex flex-col items-center gap-1 text-[11px] font-medium"
             >
               <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border-4 border-white bg-[#fff8d9] shadow-md">
@@ -320,19 +477,15 @@ export function HomeScreen() {
               </span>
               <div className="min-w-0">
                 <p className="text-xs">
-                  <b>우리 아이는 지금</b>
+                  <b>{childName} 어린이는 지금</b>
                 </p>
-                <p className="mt-0.5 text-sm font-bold">
-                  보문초등학교 주변에 있어요.
-                </p>
+                <p className="mt-0.5 text-sm font-bold">{childLocationLabel}</p>
                 <p className="mt-1 text-[9px] text-slate-500">
-                  2026.08.25 · 최신 위치 · GPS
+                  {formatUpdatedAt(childUpdatedAt)} · GPS
                 </p>
                 <button
                   type="button"
-                  onClick={() => setIsChildMoving((moving) => !moving)}
                   className={`mt-1 text-left text-xs font-semibold ${isChildMoving ? 'text-sub-leaf' : 'text-neutral-500'}`}
-                  aria-label="자녀 이동 상태 이미지 미리보기 전환"
                 >
                   {isChildMoving
                     ? '안심루트로 이동 중입니다.'

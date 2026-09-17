@@ -91,6 +91,17 @@ declare global {
       constructor(options: { map: Map; position: LatLng; image?: MarkerImage })
       setMap(map: Map | null): void
     }
+    class CustomOverlay {
+      constructor(options: {
+        map: Map
+        position: LatLng
+        content: HTMLElement
+        xAnchor?: number
+        yAnchor?: number
+        zIndex?: number
+      })
+      setMap(map: Map | null): void
+    }
     class Circle {
       constructor(options: {
         map: Map
@@ -149,6 +160,13 @@ export type KakaoMapMarker = {
   onClick?: () => void
 }
 
+export type KakaoMapTrackedMarker = {
+  position: KakaoMapCoordinate
+  imageUrl: string
+  heading?: number | null
+  moving?: boolean
+}
+
 export type KakaoMapCircle = {
   center: KakaoMapCoordinate
   radius: number
@@ -173,6 +191,7 @@ type KakaoMapProps = {
   center: KakaoMapCoordinate
   level?: number
   markers?: KakaoMapMarker[]
+  trackedMarker?: KakaoMapTrackedMarker
   circle?: KakaoMapCircle
   circles?: KakaoMapCircle[]
   rectangles?: KakaoMapRectangle[]
@@ -216,6 +235,7 @@ export function KakaoMap({
   center,
   level = 3,
   markers = [],
+  trackedMarker,
   circle,
   circles = [],
   rectangles = [],
@@ -323,6 +343,51 @@ export function KakaoMap({
         return marker
       },
     )
+    let trackedOverlay: kakao.maps.CustomOverlay | undefined
+    if (trackedMarker) {
+      const content = document.createElement('div')
+      content.className = 'relative h-[112px] w-[88px] pointer-events-none'
+
+      const character = document.createElement('img')
+      character.src = trackedMarker.imageUrl
+      character.alt = ''
+      character.className =
+        'absolute left-1/2 top-0 h-[76px] w-[76px] -translate-x-1/2 object-contain drop-shadow-md'
+      content.appendChild(character)
+
+      const pointer = document.createElement('span')
+      pointer.className =
+        'absolute left-1/2 top-[67px] h-5 w-5 -translate-x-1/2 rotate-45 border-b-[5px] border-r-[5px] border-white bg-white'
+      content.appendChild(pointer)
+
+      if (trackedMarker.moving && trackedMarker.heading != null) {
+        const arrow = document.createElement('span')
+        arrow.className =
+          'absolute bottom-[14px] left-1/2 z-10 h-7 w-[18px] bg-[#ef4444] drop-shadow-sm'
+        arrow.style.clipPath =
+          'polygon(50% 0, 100% 42%, 68% 42%, 68% 100%, 32% 100%, 32% 42%, 0 42%)'
+        arrow.style.transform = `translateX(-50%) rotate(${trackedMarker.heading}deg)`
+        arrow.style.transformOrigin = '50% 100%'
+        content.appendChild(arrow)
+      }
+
+      const dot = document.createElement('span')
+      dot.className =
+        'absolute bottom-1 left-1/2 z-20 h-6 w-6 -translate-x-1/2 rounded-full border-[4px] border-white bg-[#ef4444] shadow-md'
+      content.appendChild(dot)
+
+      trackedOverlay = new maps.CustomOverlay({
+        map,
+        position: new maps.LatLng(
+          trackedMarker.position.lat,
+          trackedMarker.position.lng,
+        ),
+        content,
+        xAnchor: 0.5,
+        yAnchor: 0.96,
+        zIndex: 20,
+      })
+    }
     const rectangleInstances = rectangles.map(
       (rectangle) =>
         new maps.Rectangle({
@@ -356,10 +421,11 @@ export function KakaoMap({
 
     return () => {
       markerInstances.forEach((marker) => marker.setMap(null))
+      trackedOverlay?.setMap(null)
       rectangleInstances.forEach((rectangle) => rectangle.setMap(null))
       circleInstances.forEach((circleInstance) => circleInstance.setMap(null))
     }
-  }, [isLoaded, markers, circle, circles, rectangles])
+  }, [isLoaded, markers, trackedMarker, circle, circles, rectangles])
 
   return (
     <div className="relative h-full w-full">
