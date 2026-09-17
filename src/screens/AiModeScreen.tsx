@@ -104,8 +104,8 @@ export function AiModeScreen() {
         setZones(riskZones)
         setGrids(grids)
         const counts = [0, 0, 0, 0]
-        grids.forEach((grid) => {
-          counts[gridGradeNumber(grid) - 1] += 1
+        riskZones.forEach((zone) => {
+          counts[gradeNumber(zone.grade) - 1] += 1
         })
         setGradeCounts(counts)
         setSelectedGrade((current) => {

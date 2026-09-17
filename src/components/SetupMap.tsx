@@ -23,11 +23,8 @@ export function SetupMap({
   showPin,
 }: SetupMapProps) {
   const [currentLocation, setCurrentLocation] = useState(fallbackLocation)
-  // 장소를 고르는 동안에는 사용자가 보고 있던 지도 위치를 유지한다.
-  // 안전구역 설정(showHome)에서는 저장한 안전장소를 중심으로 보여준다.
-  const mapCenter = showHome
-    ? (selectedPosition ?? currentLocation)
-    : currentLocation
+  // 검색 결과나 지도에서 선택한 장소를 지도 중심으로 보여준다.
+  const mapCenter = selectedPosition ?? currentLocation
 
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(

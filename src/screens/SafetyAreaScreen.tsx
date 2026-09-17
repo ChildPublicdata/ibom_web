@@ -13,6 +13,7 @@ import { NotificationButton } from '@/components/NotificationButton'
 import {
   KakaoMap,
   type KakaoMapBounds,
+  type KakaoMapCoordinate,
   type KakaoMapMarker,
 } from '@/components/KakaoMap'
 import {
@@ -35,8 +36,14 @@ import {
   type KakaoPlace,
   type PlaceSearchKind,
 } from '@/lib/kakaoPlaces'
+import { getAuthSession } from '@/lib/authStorage'
+import {
+  getChildLocation,
+  listChildren,
+  reportChildLocation,
+} from '@/lib/familyApi'
+import { useAppStore } from '@/store/useAppStore'
 
-const CHILD_POSITION = { lat: 37.3943, lng: 126.9568 }
 const categories: PlaceSearchKind[] = [
   '소아과',
   '병원',
@@ -80,7 +87,10 @@ export function SafetyAreaScreen() {
   const [isPlaceLoading, setIsPlaceLoading] = useState(false)
   const [placeError, setPlaceError] = useState('')
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
-  const [mapCenter, setMapCenter] = useState(CHILD_POSITION)
+  const [childPosition, setChildPosition] = useState<KakaoMapCoordinate | null>(
+    null,
+  )
+  const [mapCenter, setMapCenter] = useState<KakaoMapCoordinate | null>(null)
   const [mapBounds, setMapBounds] = useState<KakaoMapBounds | null>(null)
   const [riskZones, setRiskZones] = useState<RiskZone[]>([])
   const [facilities, setFacilities] = useState<Facility[]>([])
@@ -93,6 +103,8 @@ export function SafetyAreaScreen() {
   const [isChildInside, setIsChildInside] = useState<boolean | null>(null)
   const sheetPointerY = useRef<number | null>(null)
   const dismissedAutomaticRisks = useRef(new Set<string>())
+  const selectedChildId = useAppStore((state) => state.selectedChildId)
+  const setSelectedChildId = useAppStore((state) => state.setSelectedChildId)
 
   useEffect(() => {
     Promise.all([
@@ -108,10 +120,64 @@ export function SafetyAreaScreen() {
         setTrafficAccidents(accidentPage.content)
       })
       .catch(() => undefined)
-    checkSafeZones(CHILD_POSITION.lat, CHILD_POSITION.lng)
+  }, [])
+
+  useEffect(() => {
+    const session = getAuthSession()
+    if (!session) return
+
+    if (session.role === 'CHILD') {
+      if (!navigator.geolocation) return
+      const watchId = navigator.geolocation.watchPosition(
+        ({ coords }) => {
+          const position = { lat: coords.latitude, lng: coords.longitude }
+          setChildPosition(position)
+          setMapCenter((current) => current ?? position)
+          reportChildLocation(position.lat, position.lng).catch(() => undefined)
+        },
+        () => setPlaceError('현재 위치 권한을 허용해 주세요.'),
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 },
+      )
+      return () => navigator.geolocation.clearWatch(watchId)
+    }
+
+    let cancelled = false
+    const refreshChildLocation = async () => {
+      try {
+        const children = await listChildren()
+        if (cancelled || children.length === 0) return
+        const selected =
+          children.find((child) => String(child.childId) === selectedChildId) ??
+          children[0]
+        setSelectedChildId(String(selected.childId))
+        const location = await getChildLocation(selected.childId)
+        if (cancelled) return
+        const position = { lat: location.lat, lng: location.lon }
+        setChildPosition(position)
+        setMapCenter((current) => current ?? position)
+      } catch (locationError) {
+        if (!cancelled)
+          setPlaceError(
+            locationError instanceof Error
+              ? locationError.message
+              : '자녀 위치를 불러오지 못했습니다.',
+          )
+      }
+    }
+    void refreshChildLocation()
+    const timer = window.setInterval(refreshChildLocation, 10000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [selectedChildId, setSelectedChildId])
+
+  useEffect(() => {
+    if (!childPosition) return
+    checkSafeZones(childPosition.lat, childPosition.lng)
       .then((result) => setIsChildInside(result.inside))
       .catch(() => setIsChildInside(null))
-  }, [])
+  }, [childPosition])
 
   useEffect(() => {
     if (!mapBounds) return
@@ -133,17 +199,17 @@ export function SafetyAreaScreen() {
   }, [mapBounds])
 
   useEffect(() => {
-    if (selectedRisk || selectedCategory) return
+    if (!childPosition || selectedRisk || selectedCategory) return
     const containingZone = riskZones.find(
       (zone) =>
         !dismissedAutomaticRisks.current.has(zone.zoneId) &&
-        distanceInMeters(CHILD_POSITION, { lat: zone.lat, lng: zone.lng }) <=
+        distanceInMeters(childPosition, { lat: zone.lat, lng: zone.lng }) <=
           zone.radiusM,
     )
     if (!containingZone) return
     // 아이가 사고 다발 구역 안에 있으면 별도 마커 클릭 없이 상세창을 표시합니다.
     setSelectedRisk(containingZone)
-  }, [riskZones, selectedCategory, selectedRisk])
+  }, [childPosition, riskZones, selectedCategory, selectedRisk])
 
   useEffect(() => {
     if (!selectedCategory || !mapBounds) return
@@ -204,12 +270,16 @@ export function SafetyAreaScreen() {
     riskZones.length > 0 ? riskZones : visibleAccidentZones
 
   const markers: KakaoMapMarker[] = [
-    {
-      id: 'child',
-      position: CHILD_POSITION,
-      imageUrl: childStationary,
-      imageSize: { width: 78, height: 77 },
-    },
+    ...(childPosition
+      ? [
+          {
+            id: 'child',
+            position: childPosition,
+            imageUrl: childStationary,
+            imageSize: { width: 78, height: 77 },
+          },
+        ]
+      : []),
     ...safeZones.map((zone) => ({
       id: `safe-${zone.id}`,
       position: { lat: zone.centerLat, lng: zone.centerLon },
@@ -310,29 +380,35 @@ export function SafetyAreaScreen() {
       </div>
 
       <section className="relative min-h-0 flex-1">
-        <KakaoMap
-          center={mapCenter}
-          level={2}
-          markers={markers}
-          onBoundsChange={setMapBounds}
-          circle={
-            selectedRisk
-              ? {
-                  center: { lat: selectedRisk.lat, lng: selectedRisk.lng },
-                  radius: selectedRisk.radiusM,
-                  strokeColor: '#FFD54F',
-                  strokeOpacity: 1,
-                  fillColor: '#FFD54F',
-                  fillOpacity: 0.38,
-                }
-              : undefined
-          }
-        />
+        {mapCenter ? (
+          <KakaoMap
+            center={mapCenter}
+            level={2}
+            markers={markers}
+            onBoundsChange={setMapBounds}
+            circle={
+              selectedRisk
+                ? {
+                    center: { lat: selectedRisk.lat, lng: selectedRisk.lng },
+                    radius: selectedRisk.radiusM,
+                    strokeColor: '#FFD54F',
+                    strokeOpacity: 1,
+                    fillColor: '#FFD54F',
+                    fillOpacity: 0.38,
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <div className="grid h-full place-items-center bg-slate-50 text-xs text-slate-400">
+            자녀 위치를 불러오고 있어요.
+          </div>
+        )}
 
         <div className="absolute left-3 top-20 z-10 flex flex-col gap-4">
           <button
             type="button"
-            onClick={() => setMapCenter(CHILD_POSITION)}
+            onClick={() => childPosition && setMapCenter(childPosition)}
             className="flex flex-col items-center gap-1 text-[11px] font-medium"
           >
             <span className="grid h-12 w-12 place-items-center rounded-full border-4 border-white bg-sub-cream shadow-md">

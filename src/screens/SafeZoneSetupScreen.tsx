@@ -4,13 +4,19 @@ import homeMarkerIcon from '@/assets/icons/home-marker.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { SetupMap } from '@/components/SetupMap'
 import { SetupHeader } from '@/components/SetupHeader'
+import {
+  hasSeenSetupOnboarding,
+  markSetupOnboardingSeen,
+} from '@/lib/onboardingStorage'
 import { createSafeZone, updateSafeZone, type SafeZone } from '@/lib/safetyApi'
 import { useAppStore } from '@/store/useAppStore'
 
 export function SafeZoneSetupScreen() {
   const { state } = useLocation()
   const editingZone = (state as { zone?: SafeZone } | null)?.zone
-  const [showGuide, setShowGuide] = useState(!editingZone)
+  const [showGuide, setShowGuide] = useState(
+    () => !editingZone && !hasSeenSetupOnboarding('safe-zone'),
+  )
   const [radius, setRadius] = useState(editingZone?.radiusM ?? 100)
   const [name, setName] = useState(editingZone?.name ?? '내 안전구역')
   const [alertEnabled, setAlertEnabled] = useState(true)
@@ -24,6 +30,11 @@ export function SafeZoneSetupScreen() {
   const safePlacePosition = editingZone
     ? { lat: editingZone.centerLat, lng: editingZone.centerLon }
     : storedSafePlacePosition
+
+  const dismissGuide = () => {
+    markSetupOnboardingSeen('safe-zone')
+    setShowGuide(false)
+  }
 
   const saveZone = async () => {
     if (!safePlacePosition) {
@@ -124,7 +135,7 @@ export function SafeZoneSetupScreen() {
       {showGuide && (
         <div
           className="absolute inset-0 z-20 flex flex-col bg-black/70 px-7 pb-24 pt-32 text-white"
-          onClick={() => setShowGuide(false)}
+          onClick={dismissGuide}
         >
           <p className="text-lg font-bold">
             안전장소 근처에
@@ -137,7 +148,7 @@ export function SafeZoneSetupScreen() {
             </div>
           </div>
           <button
-            onClick={() => setShowGuide(false)}
+            onClick={dismissGuide}
             type="button"
             className="mt-auto h-11 w-full rounded-lg bg-[#ffd54f] text-xs font-semibold text-slate-950"
           >

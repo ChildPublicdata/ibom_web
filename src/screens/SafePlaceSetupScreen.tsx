@@ -11,6 +11,10 @@ import { SetupMap } from '@/components/SetupMap'
 import { SetupHeader } from '@/components/SetupHeader'
 import type { KakaoMapCoordinate } from '@/components/KakaoMap'
 import { addressFromCoordinate } from '@/lib/kakaoPlaces'
+import {
+  hasSeenSetupOnboarding,
+  markSetupOnboardingSeen,
+} from '@/lib/onboardingStorage'
 import { createSafePlace } from '@/lib/safetyApi'
 import { useAppStore } from '@/store/useAppStore'
 
@@ -33,7 +37,9 @@ const safePlaceIconTypes: Record<SafePlaceIcon, number> = {
 
 export function SafePlaceSetupScreen() {
   const safePlaceDraft = useAppStore((state) => state.safePlaceDraft)
-  const [showGuide, setShowGuide] = useState(true)
+  const [showGuide, setShowGuide] = useState(
+    () => !hasSeenSetupOnboarding('safe-place'),
+  )
   const [selectedPosition, setSelectedPosition] =
     useState<KakaoMapCoordinate | null>(safePlaceDraft?.position ?? null)
   const [sheetState, setSheetState] = useState<SheetState>(
@@ -51,6 +57,11 @@ export function SafePlaceSetupScreen() {
   const setSafePlacePosition = useAppStore(
     (state) => state.setSafePlacePosition,
   )
+
+  const dismissGuide = () => {
+    markSetupOnboardingSeen('safe-place')
+    setShowGuide(false)
+  }
 
   const selectPlace = async (position: KakaoMapCoordinate) => {
     setSelectedPosition(position)
@@ -255,7 +266,7 @@ export function SafePlaceSetupScreen() {
       {showGuide && (
         <div
           className="absolute inset-0 z-20 flex flex-col bg-black/70 px-8 pb-24 pt-20 text-white"
-          onClick={() => setShowGuide(false)}
+          onClick={dismissGuide}
         >
           <div>
             <p className="text-lg font-bold">
@@ -268,6 +279,7 @@ export function SafePlaceSetupScreen() {
               type="button"
               onClick={(event) => {
                 event.stopPropagation()
+                markSetupOnboardingSeen('safe-place')
                 navigate('/safe-place-search')
               }}
               className="inline-flex items-center whitespace-nowrap rounded-full border-2 border-dashed border-[#ff9800] bg-white px-5 py-2 text-sm font-medium text-[#3b82f6] shadow-md"
