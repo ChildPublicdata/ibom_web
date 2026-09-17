@@ -20,6 +20,13 @@ import {
   type HazardGrid,
   type RiskZone,
 } from '@/lib/safetyApi'
+import { getAuthSession } from '@/lib/authStorage'
+import {
+  getChildLocation,
+  listChildren,
+  reportChildLocation,
+} from '@/lib/familyApi'
+import { useAppStore } from '@/store/useAppStore'
 
 // 백엔드의 AI 위험구역 시연 데이터가 있는 안양 평촌 인근 좌표입니다.
 const MAP_CENTER = { lat: 37.401, lng: 126.971 }
@@ -62,6 +69,32 @@ function gridBounds(grid: HazardGrid) {
   }
 }
 
+function movementBetween(
+  previous: KakaoMapCoordinate,
+  current: KakaoMapCoordinate,
+) {
+  const toRadians = (degree: number) => (degree * Math.PI) / 180
+  const latitudeDelta = toRadians(current.lat - previous.lat)
+  const longitudeDelta = toRadians(current.lng - previous.lng)
+  const latitude1 = toRadians(previous.lat)
+  const latitude2 = toRadians(current.lat)
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(latitude1) *
+      Math.cos(latitude2) *
+      Math.sin(longitudeDelta / 2) ** 2
+  const distance =
+    6_371_000 *
+    2 *
+    Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+  const y = Math.sin(longitudeDelta) * Math.cos(latitude2)
+  const x =
+    Math.cos(latitude1) * Math.sin(latitude2) -
+    Math.sin(latitude1) * Math.cos(latitude2) * Math.cos(longitudeDelta)
+  const heading = (Math.atan2(y, x) * 180) / Math.PI
+  return { distance, heading: (heading + 360) % 360 }
+}
+
 export function AiModeScreen() {
   const [showLegend, setShowLegend] = useState(false)
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
@@ -74,8 +107,25 @@ export function AiModeScreen() {
   const [selectedGrade, setSelectedGrade] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [childPosition, setChildPosition] = useState<KakaoMapCoordinate | null>(
+    null,
+  )
+  const [childHeading, setChildHeading] = useState<number | null>(null)
   const sheetPointerY = useRef<number | null>(null)
   const wasSheetDragged = useRef(false)
+  const previousChildPosition = useRef<KakaoMapCoordinate | null>(null)
+  const selectedChildId = useAppStore((state) => state.selectedChildId)
+  const setSelectedChildId = useAppStore((state) => state.setSelectedChildId)
+
+  const updateChildPosition = (position: KakaoMapCoordinate) => {
+    const previous = previousChildPosition.current
+    if (previous) {
+      const movement = movementBetween(previous, position)
+      if (movement.distance >= 3) setChildHeading(movement.heading)
+    }
+    previousChildPosition.current = position
+    setChildPosition(position)
+  }
 
   const accidentTotals = useMemo(
     () => ({
@@ -85,6 +135,48 @@ export function AiModeScreen() {
     }),
     [zones],
   )
+
+  useEffect(() => {
+    const session = getAuthSession()
+    if (!session) return
+
+    if (session.role === 'CHILD') {
+      if (!navigator.geolocation) return
+      const watchId = navigator.geolocation.watchPosition(
+        ({ coords }) => {
+          const position = { lat: coords.latitude, lng: coords.longitude }
+          updateChildPosition(position)
+          reportChildLocation(position.lat, position.lng).catch(() => undefined)
+        },
+        () => undefined,
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 },
+      )
+      return () => navigator.geolocation.clearWatch(watchId)
+    }
+
+    let cancelled = false
+    const refreshChildLocation = async () => {
+      try {
+        const children = await listChildren()
+        if (cancelled || children.length === 0) return
+        const selected =
+          children.find((child) => String(child.childId) === selectedChildId) ??
+          children[0]
+        setSelectedChildId(String(selected.childId))
+        const location = await getChildLocation(selected.childId)
+        if (!cancelled)
+          updateChildPosition({ lat: location.lat, lng: location.lon })
+      } catch {
+        // 위험도 지도는 자녀 위치를 불러오지 못해도 계속 사용할 수 있습니다.
+      }
+    }
+    void refreshChildLocation()
+    const timer = window.setInterval(refreshChildLocation, 10000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [selectedChildId, setSelectedChildId])
 
   useEffect(() => {
     if (!mapBounds) return
@@ -132,12 +224,6 @@ export function AiModeScreen() {
 
   const markers = useMemo(
     () => [
-      {
-        id: 'child',
-        position: MAP_CENTER,
-        imageUrl: childStationary,
-        imageSize: { width: 72, height: 72 },
-      },
       ...zones.map((zone) => ({
         id: zone.zoneId,
         position: { lat: zone.lat, lng: zone.lng },
@@ -166,6 +252,15 @@ export function AiModeScreen() {
           center={mapCenter}
           level={2}
           markers={markers}
+          trackedMarker={
+            childPosition
+              ? {
+                  position: childPosition,
+                  imageUrl: childStationary,
+                  heading: childHeading,
+                }
+              : undefined
+          }
           circles={zones.map((zone) => ({
             center: { lat: zone.lat, lng: zone.lng },
             radius: zone.radiusM,
@@ -187,7 +282,7 @@ export function AiModeScreen() {
         <div className="absolute left-3 top-5 z-10 flex flex-col gap-4">
           <button
             type="button"
-            onClick={() => setMapCenter(MAP_CENTER)}
+            onClick={() => childPosition && setMapCenter(childPosition)}
             className="flex flex-col items-center gap-1 text-[11px] font-medium"
           >
             <span className="grid h-12 w-12 place-items-center rounded-full border-4 border-white bg-sub-cream shadow-md">

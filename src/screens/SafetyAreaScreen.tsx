@@ -7,6 +7,7 @@ import homeMarkerIcon from '@/assets/icons/home-marker.svg'
 import cctvIcon from '@/assets/icons/cctv.svg'
 import riskAreaMarker from '@/assets/icons/risk-area-marker.svg'
 import safeAreaStatusIcon from '@/assets/icons/safe-area-status.svg'
+import dangerAreaStatusIcon from '@/assets/icons/danger-area-status.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { PhoneCallButton } from '@/components/CallModal'
 import { NotificationButton } from '@/components/NotificationButton'
@@ -58,6 +59,21 @@ function formatDistance(meters: number) {
     : `${(meters / 1000).toFixed(1)}km`
 }
 
+function formatUpdatedAt(updatedAt: string | null) {
+  if (!updatedAt) return '위치 시간 확인 중'
+  const hasTimeZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(updatedAt)
+  const date = new Date(hasTimeZone ? updatedAt : `${updatedAt}Z`)
+  if (Number.isNaN(date.getTime())) return '최신 위치'
+  return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+}
+
 function distanceInMeters(
   from: { lat: number; lng: number },
   to: { lat: number; lng: number },
@@ -77,6 +93,21 @@ function distanceInMeters(
   return (
     earthRadius * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
   )
+}
+
+function movementHeading(
+  previous: KakaoMapCoordinate,
+  current: KakaoMapCoordinate,
+) {
+  const toRadians = (degree: number) => (degree * Math.PI) / 180
+  const longitudeDelta = toRadians(current.lng - previous.lng)
+  const latitude1 = toRadians(previous.lat)
+  const latitude2 = toRadians(current.lat)
+  const y = Math.sin(longitudeDelta) * Math.cos(latitude2)
+  const x =
+    Math.cos(latitude1) * Math.sin(latitude2) -
+    Math.sin(latitude1) * Math.cos(latitude2) * Math.cos(longitudeDelta)
+  return (Math.atan2(y, x) * 180) / Math.PI + 360
 }
 
 export function SafetyAreaScreen() {
@@ -101,10 +132,21 @@ export function SafetyAreaScreen() {
     [],
   )
   const [isChildInside, setIsChildInside] = useState<boolean | null>(null)
+  const [childUpdatedAt, setChildUpdatedAt] = useState<string | null>(null)
+  const [childHeading, setChildHeading] = useState<number | null>(null)
   const sheetPointerY = useRef<number | null>(null)
+  const previousChildPosition = useRef<KakaoMapCoordinate | null>(null)
   const dismissedAutomaticRisks = useRef(new Set<string>())
   const selectedChildId = useAppStore((state) => state.selectedChildId)
   const setSelectedChildId = useAppStore((state) => state.setSelectedChildId)
+
+  const updateChildPosition = (position: KakaoMapCoordinate) => {
+    const previous = previousChildPosition.current
+    if (previous && distanceInMeters(previous, position) >= 3)
+      setChildHeading(movementHeading(previous, position) % 360)
+    previousChildPosition.current = position
+    setChildPosition(position)
+  }
 
   useEffect(() => {
     Promise.all([
@@ -129,11 +171,14 @@ export function SafetyAreaScreen() {
     if (session.role === 'CHILD') {
       if (!navigator.geolocation) return
       const watchId = navigator.geolocation.watchPosition(
-        ({ coords }) => {
+        ({ coords, timestamp }) => {
           const position = { lat: coords.latitude, lng: coords.longitude }
-          setChildPosition(position)
+          updateChildPosition(position)
+          setChildUpdatedAt(new Date(timestamp).toISOString())
           setMapCenter((current) => current ?? position)
-          reportChildLocation(position.lat, position.lng).catch(() => undefined)
+          reportChildLocation(position.lat, position.lng)
+            .then((location) => setChildUpdatedAt(location.updatedAt))
+            .catch(() => undefined)
         },
         () => setPlaceError('현재 위치 권한을 허용해 주세요.'),
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 },
@@ -153,7 +198,8 @@ export function SafetyAreaScreen() {
         const location = await getChildLocation(selected.childId)
         if (cancelled) return
         const position = { lat: location.lat, lng: location.lon }
-        setChildPosition(position)
+        updateChildPosition(position)
+        setChildUpdatedAt(location.updatedAt)
         setMapCenter((current) => current ?? position)
       } catch (locationError) {
         if (!cancelled)
@@ -270,16 +316,6 @@ export function SafetyAreaScreen() {
     riskZones.length > 0 ? riskZones : visibleAccidentZones
 
   const markers: KakaoMapMarker[] = [
-    ...(childPosition
-      ? [
-          {
-            id: 'child',
-            position: childPosition,
-            imageUrl: childStationary,
-            imageSize: { width: 78, height: 77 },
-          },
-        ]
-      : []),
     ...safeZones.map((zone) => ({
       id: `safe-${zone.id}`,
       position: { lat: zone.centerLat, lng: zone.centerLon },
@@ -385,6 +421,15 @@ export function SafetyAreaScreen() {
             center={mapCenter}
             level={2}
             markers={markers}
+            trackedMarker={
+              childPosition
+                ? {
+                    position: childPosition,
+                    imageUrl: childStationary,
+                    heading: childHeading,
+                  }
+                : undefined
+            }
             onBoundsChange={setMapBounds}
             circle={
               selectedRisk
@@ -437,7 +482,15 @@ export function SafetyAreaScreen() {
           >
             <div className="flex items-center gap-3 text-white">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-sub-leaf">
-                <img src={safeAreaStatusIcon} alt="" className="h-8 w-8" />
+                <img
+                  src={
+                    isChildInside === false
+                      ? dangerAreaStatusIcon
+                      : safeAreaStatusIcon
+                  }
+                  alt=""
+                  className="h-8 w-8"
+                />
               </span>
               <div>
                 <p className="text-xs font-semibold">
@@ -447,7 +500,9 @@ export function SafetyAreaScreen() {
                       ? '우리 아이는 지금 안전구역에 있어요.'
                       : '우리 아이가 안전구역 밖에 있어요.'}
                 </p>
-                <p className="mt-1 text-[9px]">2026.08.25 · 최신 위치 · GPS</p>
+                <p className="mt-1 text-[9px]">
+                  {formatUpdatedAt(childUpdatedAt)} · GPS
+                </p>
               </div>
             </div>
           </section>
