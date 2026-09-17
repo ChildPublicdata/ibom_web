@@ -131,29 +131,58 @@ export function SafeZoneSetupScreen() {
               : '보호구역 저장'}
         </button>
       </section>
-      <BottomNavigation highlighted={showGuide} />
+      <BottomNavigation />
       {showGuide && (
         <div
-          className="absolute inset-0 z-20 flex flex-col bg-black/70 px-7 pb-24 pt-32 text-white"
+          className="absolute inset-0 z-[60] bg-black/70 text-white"
           onClick={dismissGuide}
         >
-          <p className="text-lg font-bold">
+          <p className="absolute left-5 top-[105px] text-lg font-bold leading-6">
             안전장소 근처에
             <br />
             <span className="text-[#ffb000]">안전구역 범위</span>를 설정하세요!
           </p>
-          <div className="mt-20 flex flex-col items-center">
-            <div className="grid h-24 w-24 place-items-center rounded-full border-2 border-dashed border-[#ff9800] bg-[#fff3cb]/75">
-              <img alt="안전장소" className="h-16 w-16" src={homeMarkerIcon} />
+          <div className="absolute left-1/2 top-[31%] -translate-x-1/2">
+            <div className="grid h-[116px] w-[116px] place-items-center rounded-full border-2 border-dashed border-[#ff9800] bg-[#fff3cb]/90">
+              <div className="flex flex-col items-center">
+                <img
+                  alt="안전장소"
+                  className="h-[62px] w-[62px]"
+                  src={homeMarkerIcon}
+                />
+                <span className="-mt-1 text-sm font-semibold text-slate-950">
+                  집
+                </span>
+              </div>
             </div>
           </div>
-          <button
-            onClick={dismissGuide}
-            type="button"
-            className="mt-auto h-11 w-full rounded-lg bg-[#ffd54f] text-xs font-semibold text-slate-950"
-          >
-            반경 설정하기
-          </button>
+
+          <div className="absolute bottom-[280px] left-4 right-4 rounded-2xl border-2 border-dashed border-[#ff9800] bg-white px-3 py-2 text-slate-950">
+            <div className="flex justify-between text-[11px]">
+              <span>30m</span>
+              <span>{radius}m</span>
+            </div>
+            <input
+              aria-label="안전구역 반경 안내"
+              value={radius}
+              readOnly
+              type="range"
+              min="30"
+              max="200"
+              className="mt-2 w-full accent-[#ffd54f]"
+            />
+          </div>
+
+          <div className="absolute bottom-[188px] left-4 right-4 rounded-2xl border-2 border-dashed border-[#ff9800] bg-white p-2 text-slate-950">
+            <div className="flex h-12 items-center justify-between rounded-lg border border-slate-200 px-3">
+              <span className="text-[10px] text-slate-400">
+                구역을 벗어나면 알려드려요.
+              </span>
+              <span className="h-6 w-10 rounded-full bg-[#3f82ef] p-0.5">
+                <span className="block h-5 w-5 translate-x-4 rounded-full bg-white shadow" />
+              </span>
+            </div>
+          </div>
         </div>
       )}
       {isComplete && (

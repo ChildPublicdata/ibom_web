@@ -355,20 +355,19 @@ export function KakaoMap({
         'absolute left-1/2 top-[6px] h-[66px] w-[66px] -translate-x-1/2 object-contain drop-shadow-md'
       content.appendChild(character)
 
-      if (trackedMarker.moving && trackedMarker.heading != null) {
+      if (trackedMarker.heading != null) {
         const arrow = document.createElement('span')
         arrow.className =
-          'absolute bottom-[14px] left-1/2 z-10 h-7 w-[18px] bg-[#ef4444] drop-shadow-sm'
-        arrow.style.clipPath =
-          'polygon(50% 0, 100% 42%, 68% 42%, 68% 100%, 32% 100%, 32% 42%, 0 42%)'
-        arrow.style.transform = `translateX(-50%) rotate(${trackedMarker.heading}deg)`
-        arrow.style.transformOrigin = '50% 100%'
+          'absolute bottom-[14px] left-1/2 z-10 h-4 w-4 bg-[#ef4444] drop-shadow-sm'
+        arrow.style.clipPath = 'polygon(50% 0, 100% 100%, 0 100%)'
+        arrow.style.transform = `translate(-50%, 50%) rotate(${trackedMarker.heading}deg) translateY(-16px)`
+        arrow.style.transformOrigin = '50% 50%'
         content.appendChild(arrow)
       }
 
       const dot = document.createElement('span')
       dot.className =
-        'absolute bottom-1 left-1/2 z-20 h-5 w-5 -translate-x-1/2 rounded-full border-[4px] border-white bg-[#ef4444] shadow-[0_2px_7px_rgba(15,23,42,0.35)]'
+        'absolute bottom-1 left-1/2 z-20 h-5 w-5 -translate-x-1/2 rounded-full border-[3px] border-white bg-[#ef4444] shadow-[0_2px_7px_rgba(15,23,42,0.35)]'
       content.appendChild(dot)
 
       trackedOverlay = new maps.CustomOverlay({
