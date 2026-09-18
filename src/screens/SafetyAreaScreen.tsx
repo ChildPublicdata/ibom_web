@@ -126,6 +126,7 @@ export function SafetyAreaScreen() {
   const [riskZones, setRiskZones] = useState<RiskZone[]>([])
   const [facilities, setFacilities] = useState<Facility[]>([])
   const [safeZones, setSafeZones] = useState<SafeZone[]>([])
+  const [areSafeZonesLoaded, setAreSafeZonesLoaded] = useState(false)
   const [cctv, setCctv] = useState<Cctv[]>([])
   const [safetyBells, setSafetyBells] = useState<SafetyBell[]>([])
   const [trafficAccidents, setTrafficAccidents] = useState<TrafficAccident[]>(
@@ -149,14 +150,13 @@ export function SafetyAreaScreen() {
   }
 
   useEffect(() => {
-    Promise.all([
-      listSafeZones(),
-      listCctv(),
-      listSafetyBells(),
-      listTrafficAccidents(),
-    ])
-      .then(([zones, cctvPage, bellPage, accidentPage]) => {
-        setSafeZones(zones)
+    listSafeZones()
+      .then(setSafeZones)
+      .catch(() => setSafeZones([]))
+      .finally(() => setAreSafeZonesLoaded(true))
+
+    Promise.all([listCctv(), listSafetyBells(), listTrafficAccidents()])
+      .then(([cctvPage, bellPage, accidentPage]) => {
         setCctv(cctvPage.content)
         setSafetyBells(bellPage.content)
         setTrafficAccidents(accidentPage.content)
@@ -219,11 +219,23 @@ export function SafetyAreaScreen() {
   }, [selectedChildId, setSelectedChildId])
 
   useEffect(() => {
-    if (!childPosition) return
+    if (!childPosition || !areSafeZonesLoaded) return
+    if (safeZones.length === 0) return
     checkSafeZones(childPosition.lat, childPosition.lng)
-      .then((result) => setIsChildInside(result.inside))
+      .then((result) => {
+        const isInsideRegisteredZone = safeZones.some(
+          (zone) =>
+            distanceInMeters(childPosition, {
+              lat: zone.centerLat,
+              lng: zone.centerLon,
+            }) <= zone.radiusM,
+        )
+        setIsChildInside(
+          result.zoneCount > 0 && result.inside && isInsideRegisteredZone,
+        )
+      })
       .catch(() => setIsChildInside(null))
-  }, [childPosition])
+  }, [areSafeZonesLoaded, childPosition, safeZones])
 
   useEffect(() => {
     if (!mapBounds) return
@@ -380,6 +392,9 @@ export function SafetyAreaScreen() {
         { type: '사망 사고', count: selectedRisk.fatalities },
       ]
     : []
+  const isOutsideSafeZone =
+    areSafeZonesLoaded &&
+    (safeZones.length === 0 || isChildInside === false)
 
   return (
     <main className="relative flex min-h-[100svh] w-full max-w-[390px] flex-col overflow-hidden bg-white font-sans text-neutral-900">
@@ -430,6 +445,15 @@ export function SafetyAreaScreen() {
                   }
                 : undefined
             }
+            circles={safeZones.map((zone) => ({
+              center: { lat: zone.centerLat, lng: zone.centerLon },
+              radius: zone.radiusM,
+              strokeColor: '#3F82EF',
+              strokeOpacity: 0.9,
+              strokeStyle: 'solid',
+              fillColor: '#7DD3FC',
+              fillOpacity: 0.2,
+            }))}
             onBoundsChange={setMapBounds}
             circle={
               selectedRisk
@@ -478,13 +502,13 @@ export function SafetyAreaScreen() {
 
         {!selectedRisk && !selectedCategory && (
           <section
-            className={`absolute bottom-4 left-4 right-4 z-20 rounded-2xl px-4 py-3 shadow-lg ${isChildInside === false ? 'bg-main-orange' : 'bg-main-yellow'}`}
+            className={`absolute bottom-4 left-4 right-4 z-20 rounded-2xl px-4 py-3 shadow-lg ${isOutsideSafeZone ? 'bg-main-orange' : 'bg-main-yellow'}`}
           >
             <div className="flex items-center gap-3 text-white">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-sub-leaf">
                 <img
                   src={
-                    isChildInside === false
+                    isOutsideSafeZone
                       ? dangerAreaStatusIcon
                       : safeAreaStatusIcon
                   }
@@ -494,8 +518,12 @@ export function SafetyAreaScreen() {
               </span>
               <div>
                 <p className="text-xs font-semibold">
-                  {isChildInside === null
+                  {!areSafeZonesLoaded
                     ? '안전구역 상태를 확인하고 있어요.'
+                    : safeZones.length === 0
+                      ? '등록된 안전구역이 없어요.'
+                      : isChildInside === null
+                        ? '안전구역 상태를 확인하고 있어요.'
                     : isChildInside
                       ? '우리 아이는 지금 안전구역에 있어요.'
                       : '우리 아이가 안전구역 밖에 있어요.'}

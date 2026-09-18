@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import childLocationPin from '@/assets/icons/child-location-pin.svg'
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -346,14 +347,26 @@ export function KakaoMap({
     let trackedOverlay: kakao.maps.CustomOverlay | undefined
     if (trackedMarker) {
       const content = document.createElement('div')
-      content.className = 'relative h-[112px] w-[88px] pointer-events-none'
+      content.className = 'relative h-[142px] w-[108px] pointer-events-none'
+
+      const pin = document.createElement('span')
+      pin.className =
+        'absolute left-1/2 top-0 z-10 h-[112px] w-[100px] -translate-x-1/2'
+
+      const pinShape = document.createElement('img')
+      pinShape.src = childLocationPin
+      pinShape.alt = ''
+      pinShape.className =
+        'absolute inset-0 h-full w-full object-fill drop-shadow-[0_4px_6px_rgba(15,23,42,0.18)]'
+      pin.appendChild(pinShape)
 
       const character = document.createElement('img')
       character.src = trackedMarker.imageUrl
       character.alt = ''
       character.className =
-        'absolute left-1/2 top-[6px] h-[66px] w-[66px] -translate-x-1/2 object-contain drop-shadow-md'
-      content.appendChild(character)
+        'absolute left-1/2 top-[8px] h-[76px] w-[76px] -translate-x-1/2 object-contain drop-shadow-md'
+      pin.appendChild(character)
+      content.appendChild(pin)
 
       if (trackedMarker.heading != null) {
         const arrow = document.createElement('span')
