@@ -3,8 +3,8 @@ import menuChildLocationIcon from '@/assets/icons/menu-child-location.svg'
 import menuCustomerCenterIcon from '@/assets/icons/menu-customer-center.svg'
 import menuDeviceSettingsIcon from '@/assets/icons/menu-device-settings.svg'
 import menuEditProfileIcon from '@/assets/icons/menu-edit-profile.svg'
-import menuRouteIcon from '@/assets/icons/menu-route.svg'
 import menuSafePlaceIcon from '@/assets/icons/menu-safe-place.svg'
+import menuUserFeedbackIcon from '@/assets/icons/menu-user-feedback.svg'
 import homeIcon from '@/assets/icons/home.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import menuIcon from '@/assets/icons/menu.svg'
@@ -157,12 +157,19 @@ export function BottomNavigation({
                   }}
                 />
                 <MenuCard icon={menuChildLocationIcon} label="아이 위치" />
-                <MenuCard icon={menuRouteIcon} label="안심루트" />
               </>
             )}
             <MenuCard icon={menuEditProfileIcon} label="정보수정" />
             <MenuCard icon={menuDeviceSettingsIcon} label="기기설정" />
             <MenuCard icon={menuCustomerCenterIcon} label="고객센터" />
+            <MenuCard
+              icon={menuUserFeedbackIcon}
+              label="이용자 의견"
+              onClick={() => {
+                setIsMenuOpen(false)
+                navigate('/user-feedback')
+              }}
+            />
           </div>
         </div>
 

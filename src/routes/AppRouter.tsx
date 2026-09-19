@@ -16,6 +16,7 @@ import { RequireAuth } from '@/components/RequireAuth'
 import { AiModeScreen } from '@/screens/AiModeScreen'
 import { FamilyConnectedScreen } from '@/screens/FamilyConnectedScreen'
 import { SafePlacesScreen } from '@/screens/SafePlacesScreen'
+import { UserFeedbackScreen } from '@/screens/UserFeedbackScreen'
 
 export function AppRouter() {
   return (
@@ -57,6 +58,14 @@ export function AppRouter() {
         <Route path="/safe-places" element={<SafePlacesScreen />} />
         <Route path="/safety-area" element={<SafetyAreaScreen />} />
         <Route path="/ai-mode" element={<AiModeScreen />} />
+        <Route
+          path="/user-feedback"
+          element={
+            <RequireAuth role="PARENT">
+              <UserFeedbackScreen />
+            </RequireAuth>
+          }
+        />
         <Route path="/home" element={<HomeScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
