@@ -399,6 +399,15 @@ export function HomeScreen() {
               heading: childHeading,
               moving: isChildMoving,
             }}
+            circles={safeZones.map((zone) => ({
+              center: { lat: zone.centerLat, lng: zone.centerLon },
+              radius: zone.radiusM,
+              strokeColor: '#3F82EF',
+              strokeOpacity: 0.9,
+              strokeStyle: 'solid',
+              fillColor: '#7DD3FC',
+              fillOpacity: 0.2,
+            }))}
             onBoundsChange={setMapBounds}
           />
         ) : (
