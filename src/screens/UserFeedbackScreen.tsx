@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import headerLogo from '@/assets/header-logo.svg'
 import emptyIllustration from '@/assets/illustrations/user-feedback-empty.svg'
@@ -9,29 +9,56 @@ import feedbackSuccessIcon from '@/assets/icons/feedback-success.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { PhoneCallButton } from '@/components/CallModal'
 import { NotificationButton } from '@/components/NotificationButton'
-import { getAuthSession } from '@/lib/authStorage'
+import {
+  createComplaint,
+  getComplaintPhoto,
+  listComplaints,
+  type Complaint,
+} from '@/lib/complaintApi'
 
 type Feedback = {
-  id: string
+  id: number
   title: string
   content: string
   link?: string
-  imageName?: string
-  imageData?: string
+  hasPhoto: boolean
   createdAt: string
 }
 
 type ScreenMode = 'list' | 'compose' | 'detail' | 'complete'
 
-const storageKey = () =>
-  `ibom:${getAuthSession()?.userId ?? 'guest'}:user-feedback`
-
-function loadFeedback() {
-  try {
-    return JSON.parse(localStorage.getItem(storageKey()) ?? '[]') as Feedback[]
-  } catch {
-    return []
+function toFeedback(complaint: Complaint): Feedback {
+  const titleMatch = complaint.content.match(/^제목: (.*?)(?:\n\n|$)/)
+  const linkMatch = complaint.content.match(/\n\n관련 링크: (\S+)$/)
+  const title = titleMatch?.[1]?.trim() || '이용자 의견'
+  const start = titleMatch?.[0].length ?? 0
+  const end = linkMatch?.index ?? complaint.content.length
+  const content = complaint.content.slice(start, end).trim()
+  return {
+    id: complaint.id,
+    title,
+    content: content || complaint.content,
+    link: linkMatch?.[1],
+    hasPhoto: complaint.hasPhoto,
+    createdAt: complaint.createdAt,
   }
+}
+
+function serializeFeedback(title: string, content: string, link: string) {
+  return `제목: ${title.trim()}\n\n${content.trim()}${link.trim() ? `\n\n관련 링크: ${link.trim()}` : ''}`
+}
+
+function getCurrentPosition() {
+  return new Promise<GeolocationPosition>((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('현재 위치를 사용할 수 없는 기기입니다.'))
+      return
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10_000,
+    })
+  })
 }
 
 function formatDate(value: string) {
@@ -47,7 +74,7 @@ export function UserFeedbackScreen() {
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<ScreenMode>('list')
-  const [feedback, setFeedback] = useState<Feedback[]>(loadFeedback)
+  const [feedback, setFeedback] = useState<Feedback[]>([])
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(
     null,
   )
@@ -57,9 +84,54 @@ export function UserFeedbackScreen() {
   const [showLinkInput, setShowLinkInput] = useState(false)
   const [imageName, setImageName] = useState('')
   const [imagePreview, setImagePreview] = useState('')
+  const [imageFile, setImageFile] = useState<File | undefined>()
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
-  const canSubmit = title.trim().length > 0 && content.trim().length > 0
-  const contentLength = useMemo(() => content.length, [content])
+  const requestContent = serializeFeedback(title, content, link)
+  const canSubmit =
+    title.trim().length > 0 &&
+    content.trim().length > 0 &&
+    requestContent.length <= 1000 &&
+    !submitting
+  const loadFeedback = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      setFeedback((await listComplaints()).map(toFeedback))
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : '이용자 의견을 불러오지 못했습니다.',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let active = true
+    void listComplaints()
+      .then((items) => {
+        if (active) setFeedback(items.map(toFeedback))
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : '이용자 의견을 불러오지 못했습니다.',
+        )
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const openComposer = () => {
     setTitle('')
@@ -67,33 +139,43 @@ export function UserFeedbackScreen() {
     setLink('')
     setImageName('')
     setImagePreview('')
+    setImageFile(undefined)
+    setError('')
     setShowLinkInput(false)
     setMode('compose')
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSubmit) return
-    const next = [
-      {
-        id: crypto.randomUUID(),
-        title: title.trim(),
-        content: content.trim(),
-        link: link.trim() || undefined,
-        imageName: imageName || undefined,
-        imageData: imagePreview || undefined,
-        createdAt: new Date().toISOString(),
-      },
-      ...feedback,
-    ]
-    localStorage.setItem(storageKey(), JSON.stringify(next))
-    setFeedback(next)
-    setMode('complete')
-  }
-
-  const removeFeedback = (id: string) => {
-    const next = feedback.filter((item) => item.id !== id)
-    localStorage.setItem(storageKey(), JSON.stringify(next))
-    setFeedback(next)
+    setSubmitting(true)
+    setError('')
+    try {
+      const { coords } = await getCurrentPosition()
+      const created = await createComplaint({
+        lat: coords.latitude,
+        lon: coords.longitude,
+        content: requestContent,
+        photo: imageFile,
+      })
+      setFeedback((current) => [toFeedback(created), ...current])
+      setMode('complete')
+    } catch (submitError) {
+      if (
+        typeof submitError === 'object' &&
+        submitError !== null &&
+        'code' in submitError
+      ) {
+        setError('의견을 전달하려면 현재 위치 권한이 필요합니다.')
+      } else {
+        setError(
+          submitError instanceof Error
+            ? submitError.message
+            : '이용자 의견을 전달하지 못했습니다.',
+        )
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const openFeedback = (item: Feedback) => {
@@ -124,7 +206,10 @@ export function UserFeedbackScreen() {
           </div>
           <button
             type="button"
-            onClick={() => setMode('list')}
+            onClick={() => {
+              void loadFeedback()
+              setMode('list')
+            }}
             className="mt-4 h-12 w-full shrink-0 rounded-xl bg-main-yellow text-sm font-semibold"
           >
             확인
@@ -144,15 +229,24 @@ export function UserFeedbackScreen() {
                 </div>
               </div>
             )}
-            <div className={mode === 'list' ? 'mt-2 flex items-center' : 'flex h-10 items-center'}>
+            <div
+              className={
+                mode === 'list'
+                  ? 'mt-2 flex items-center'
+                  : 'flex h-10 items-center'
+              }
+            >
               <button
                 type="button"
                 aria-label="뒤로가기"
-                onClick={() =>
-                  mode === 'compose' || mode === 'detail'
-                    ? setMode('list')
-                    : navigate(-1)
-                }
+                onClick={() => {
+                  if (mode === 'compose' || mode === 'detail') {
+                    setError('')
+                    setMode('list')
+                  } else {
+                    navigate(-1)
+                  }
+                }}
                 className="mr-5 text-2xl font-light leading-none text-slate-600"
               >
                 ‹
@@ -178,7 +272,7 @@ export function UserFeedbackScreen() {
                 <textarea
                   value={content}
                   onChange={(event) => setContent(event.target.value)}
-                  maxLength={1500}
+                  maxLength={1000}
                   placeholder="내용을 작성해 주세요."
                   className="min-h-0 flex-1 resize-none text-xs leading-5 outline-none"
                 />
@@ -195,10 +289,21 @@ export function UserFeedbackScreen() {
                       onClick={() => {
                         setImageName('')
                         setImagePreview('')
+                        setImageFile(undefined)
                       }}
                       className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-black/55 text-sm text-white"
                     >
-                      ×
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 16 16"
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                      >
+                        <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                      </svg>
                     </button>
                   </div>
                 )}
@@ -229,7 +334,7 @@ export function UserFeedbackScreen() {
                     <img src={feedbackLinkIcon} alt="" className="h-5 w-5" />
                   </button>
                   <span className="ml-auto text-[10px] text-neutral-400">
-                    {contentLength}/1500자
+                    {requestContent.length}/1000자
                   </span>
                   <input
                     ref={fileInputRef}
@@ -239,6 +344,18 @@ export function UserFeedbackScreen() {
                     onChange={(event) => {
                       const file = event.target.files?.[0]
                       if (!file) return
+                      if (!file.type.startsWith('image/')) {
+                        setError('이미지 파일만 첨부할 수 있습니다.')
+                        event.target.value = ''
+                        return
+                      }
+                      if (file.size > 10 * 1024 * 1024) {
+                        setError('사진은 10MB 이하만 첨부할 수 있습니다.')
+                        event.target.value = ''
+                        return
+                      }
+                      setError('')
+                      setImageFile(file)
                       setImageName(file.name)
                       const reader = new FileReader()
                       reader.onload = () =>
@@ -255,17 +372,39 @@ export function UserFeedbackScreen() {
               <button
                 type="button"
                 disabled={!canSubmit}
-                onClick={submit}
+                onClick={() => void submit()}
                 className="h-12 rounded-xl bg-main-yellow text-xs font-semibold disabled:bg-neutral-300 disabled:text-white"
               >
-                사용자 의견 전달하기
+                {submitting ? '전달 중...' : '사용자 의견 전달하기'}
               </button>
+              {error && (
+                <p role="alert" className="px-1 text-xs text-red-500">
+                  {error}
+                </p>
+              )}
             </section>
           ) : mode === 'detail' && selectedFeedback ? (
             <FeedbackDetail feedback={selectedFeedback} />
           ) : (
             <section className="relative min-h-0 flex-1 px-5 py-5">
-              {feedback.length === 0 ? (
+              {loading ? (
+                <div className="flex h-full items-center justify-center text-xs text-neutral-400">
+                  이용자 의견을 불러오는 중입니다.
+                </div>
+              ) : error ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                  <p role="alert" className="text-xs text-red-500">
+                    {error}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void loadFeedback()}
+                    className="rounded-lg bg-main-yellow px-4 py-2 text-xs font-semibold"
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              ) : feedback.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center pb-20 text-center">
                   <img
                     src={emptyIllustration}
@@ -303,15 +442,6 @@ export function UserFeedbackScreen() {
                             {formatDate(item.createdAt)} 작성
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          aria-label="의견 삭제"
-                          title="삭제"
-                          onClick={() => removeFeedback(item.id)}
-                          className="pointer-events-auto relative z-10 px-1 text-xl leading-none"
-                        >
-                          ⋮
-                        </button>
                       </div>
                     </li>
                   ))}
@@ -326,7 +456,7 @@ export function UserFeedbackScreen() {
                 <img
                   src={feedbackAddIcon}
                   alt=""
-                  className="h-9 w-9 translate-x-[1px] -translate-y-[1px]"
+                  className="h-9 w-9 -translate-y-[1px] translate-x-[1px]"
                 />
               </button>
             </section>
@@ -350,16 +480,14 @@ function FeedbackDetail({ feedback }: { feedback: Feedback }) {
         <p className="whitespace-pre-wrap text-xs leading-5">
           {feedback.content}
         </p>
-        {feedback.imageData && (
-          <img
-            src={feedback.imageData}
-            alt={feedback.imageName || '첨부 이미지'}
-            className="mt-4 max-h-52 w-full rounded-lg object-cover"
-          />
-        )}
+        {feedback.hasPhoto && <FeedbackPhoto id={feedback.id} />}
         <div className="mt-auto flex items-center gap-4 pt-4 text-neutral-500">
-          {feedback.imageData && (
-            <img src={feedbackImageIcon} alt="첨부 이미지" className="h-5 w-5" />
+          {feedback.hasPhoto && (
+            <img
+              src={feedbackImageIcon}
+              alt="첨부 이미지"
+              className="h-5 w-5"
+            />
           )}
           {feedback.link && (
             <a
@@ -373,10 +501,39 @@ function FeedbackDetail({ feedback }: { feedback: Feedback }) {
             </a>
           )}
           <span className="ml-auto text-[10px] text-neutral-400">
-            {feedback.content.length}/1500자
+            {feedback.content.length}자
           </span>
         </div>
       </div>
     </section>
+  )
+}
+
+function FeedbackPhoto({ id }: { id: number }) {
+  const [src, setSrc] = useState('')
+
+  useEffect(() => {
+    let objectUrl = ''
+    let active = true
+    void getComplaintPhoto(id)
+      .then((blob) => {
+        if (!active) return
+        objectUrl = URL.createObjectURL(blob)
+        setSrc(objectUrl)
+      })
+      .catch(() => undefined)
+    return () => {
+      active = false
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [id])
+
+  if (!src) return null
+  return (
+    <img
+      src={src}
+      alt="첨부 이미지"
+      className="mt-4 max-h-52 w-full rounded-lg object-cover"
+    />
   )
 }

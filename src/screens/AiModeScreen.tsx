@@ -647,8 +647,8 @@ function DangerDetail({
           <li>사고 위험 집중 (EPDO {area.epdo})</li>
         </ul>
         <div className="mt-5 rounded-xl border border-point-blue bg-blue-50 p-4 text-xs text-point-blue">
-          <p className="mb-2 text-[11px]">부모님이 하실 일</p>
-          <p className="leading-5">
+          <p className="mb-2 text-sm">부모님이 하실 일</p>
+          <p className="text-base leading-6 text-[#2E60B2]">
             {explanation?.action ??
               '가능하면 이 구간을 지나지 않는 경로를 선택해 주세요.'}
           </p>

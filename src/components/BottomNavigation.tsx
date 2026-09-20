@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import menuChildLocationIcon from '@/assets/icons/menu-child-location.svg'
 import menuCustomerCenterIcon from '@/assets/icons/menu-customer-center.svg'
 import menuDeviceSettingsIcon from '@/assets/icons/menu-device-settings.svg'
 import menuEditProfileIcon from '@/assets/icons/menu-edit-profile.svg'
@@ -138,17 +137,14 @@ export function BottomNavigation({
         <div className="mx-0 mt-5 border-t border-neutral-200 pt-4">
           <div className="grid grid-cols-3 gap-x-4 gap-y-3">
             {!childOnly && (
-              <>
-                <MenuCard
-                  icon={menuSafePlaceIcon}
-                  label={'안전장소\n설정'}
-                  onClick={() => {
-                    setIsMenuOpen(false)
-                    navigate('/safe-place-setup')
-                  }}
-                />
-                <MenuCard icon={menuChildLocationIcon} label="아이 위치" />
-              </>
+              <MenuCard
+                icon={menuSafePlaceIcon}
+                label={'안전장소\n설정'}
+                onClick={() => {
+                  setIsMenuOpen(false)
+                  navigate('/safe-place-setup')
+                }}
+              />
             )}
             <MenuCard icon={menuEditProfileIcon} label="정보수정" />
             <MenuCard icon={menuDeviceSettingsIcon} label="기기설정" />

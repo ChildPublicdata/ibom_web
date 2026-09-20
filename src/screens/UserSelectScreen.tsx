@@ -31,9 +31,9 @@ export function UserSelectScreen() {
         {options.map(({ role, title, image }) => {
           return (
             <button
-              className={`flex aspect-[0.82] flex-col items-center justify-between rounded-[30px] border pt-5 shadow-[0_3px_4px_rgba(0,0,0,0.18)] transition ${
+              className={`flex aspect-[0.82] flex-col items-center justify-between overflow-hidden rounded-[30px] pt-5 shadow-[0_3px_4px_rgba(0,0,0,0.18)] transition ${
                 role === 'child' ? 'bg-[#fff9ee]' : 'bg-[#ffd54f]'
-              } border-black/5 hover:-translate-y-0.5`}
+              } hover:-translate-y-0.5`}
               key={role}
               onClick={() => {
                 setSelectedRole(role === 'parent' ? 'PARENT' : 'CHILD')
@@ -46,7 +46,7 @@ export function UserSelectScreen() {
               </span>
               <img
                 alt=""
-                className="w-full max-w-[155px] object-contain"
+                className="w-full max-w-[155px] translate-y-[6px] object-contain"
                 src={image}
               />
             </button>

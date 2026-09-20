@@ -413,7 +413,7 @@ export function SafetyAreaScreen() {
       </header>
 
       <div className="relative z-30 h-0 w-full">
-        <div className="no-scrollbar absolute inset-x-0 top-2 flex gap-1.5 overflow-x-auto px-4 pb-1">
+        <div className="no-scrollbar absolute inset-x-0 top-2 flex gap-1.5 overflow-x-auto px-4 py-2 pb-1">
           {categories.map((category) => (
             <button
               key={category}
