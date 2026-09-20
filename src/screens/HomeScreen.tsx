@@ -3,13 +3,6 @@ import headerLogo from '@/assets/header-logo.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import homeMarkerIcon from '@/assets/icons/home-marker.svg'
-import childDown from '@/assets/child-motion/child-down.svg'
-import childDownLeft from '@/assets/child-motion/child-down-left.svg'
-import childDownRight from '@/assets/child-motion/child-down-right.svg'
-import childStationary from '@/assets/child-motion/child-stationary.svg'
-import childUp from '@/assets/child-motion/child-up.svg'
-import childUpLeft from '@/assets/child-motion/child-up-left.svg'
-import childUpRight from '@/assets/child-motion/child-up-right.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { PhoneCallButton } from '@/components/CallModal'
 import { NotificationButton } from '@/components/NotificationButton'
@@ -37,6 +30,7 @@ import {
   type SafeZone,
 } from '@/lib/safetyApi'
 import { useAppStore } from '@/store/useAppStore'
+import { childMotionImage } from '@/lib/childMotion'
 
 const categories: PlaceSearchKind[] = [
   '소아과',
@@ -45,15 +39,6 @@ const categories: PlaceSearchKind[] = [
   '경찰서',
   '어린이보호구역',
 ]
-const movingFrames = [
-  childUp,
-  childUpRight,
-  childDownRight,
-  childDown,
-  childDownLeft,
-  childUpLeft,
-]
-
 function formatDistance(meters: number) {
   return meters < 1000
     ? `${meters.toLocaleString()}m`
@@ -131,7 +116,6 @@ export function HomeScreen() {
   const [childUpdatedAt, setChildUpdatedAt] = useState<string | null>(null)
   const [safeZones, setSafeZones] = useState<SafeZone[]>([])
   const [nearbyFacilities, setNearbyFacilities] = useState<Facility[]>([])
-  const [motionFrame, setMotionFrame] = useState(0)
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
   const sheetPointerY = useRef<number | null>(null)
   const previousChildPosition = useRef<KakaoMapCoordinate | null>(null)
@@ -239,18 +223,7 @@ export function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childAreaKey])
 
-  useEffect(() => {
-    if (!isChildMoving) return
-    const frameTimer = window.setInterval(
-      () => setMotionFrame((frame) => (frame + 1) % movingFrames.length),
-      900,
-    )
-    return () => window.clearInterval(frameTimer)
-  }, [isChildMoving])
-
-  const childMarkerImage = isChildMoving
-    ? movingFrames[motionFrame]
-    : childStationary
+  const childMarkerImage = childMotionImage(childHeading, isChildMoving)
 
   const childLocationLabel = useMemo(() => {
     if (!childPosition) return '위치를 확인하고 있어요.'
@@ -492,7 +465,7 @@ export function HomeScreen() {
                   className={`mt-1 text-left text-xs font-semibold ${isChildMoving ? 'text-sub-leaf' : 'text-neutral-500'}`}
                 >
                   {isChildMoving
-                    ? '안심루트로 이동 중입니다.'
+                    ? '현재 이동 중입니다.'
                     : '현재 위치에 머물고 있습니다.'}
                 </button>
               </div>

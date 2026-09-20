@@ -371,9 +371,9 @@ export function KakaoMap({
       if (trackedMarker.heading != null) {
         const arrow = document.createElement('span')
         arrow.className =
-          'absolute bottom-[14px] left-1/2 z-10 h-4 w-4 bg-[#ef4444] drop-shadow-sm'
-        arrow.style.clipPath = 'polygon(50% 0, 100% 100%, 0 100%)'
-        arrow.style.transform = `translate(-50%, 50%) rotate(${trackedMarker.heading}deg) translateY(-16px)`
+          'absolute bottom-[14px] left-1/2 z-10 h-[14px] w-[14px] bg-[#ef4444] drop-shadow-sm'
+        arrow.style.clipPath = 'polygon(50% 0%, 100% 100%, 0% 100%)'
+        arrow.style.transform = `translate(-50%, 50%) rotate(${trackedMarker.heading}deg) translateY(-18px)`
         arrow.style.transformOrigin = '50% 50%'
         content.appendChild(arrow)
       }

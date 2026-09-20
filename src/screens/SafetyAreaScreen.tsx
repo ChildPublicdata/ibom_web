@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import headerLogo from '@/assets/header-logo.svg'
-import childStationary from '@/assets/child-motion/child-stationary.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import homeMarkerIcon from '@/assets/icons/home-marker.svg'
@@ -44,6 +43,7 @@ import {
   reportChildLocation,
 } from '@/lib/familyApi'
 import { useAppStore } from '@/store/useAppStore'
+import { childMotionImage } from '@/lib/childMotion'
 
 const categories: PlaceSearchKind[] = [
   '소아과',
@@ -135,6 +135,7 @@ export function SafetyAreaScreen() {
   const [isChildInside, setIsChildInside] = useState<boolean | null>(null)
   const [childUpdatedAt, setChildUpdatedAt] = useState<string | null>(null)
   const [childHeading, setChildHeading] = useState<number | null>(null)
+  const [isChildMoving, setIsChildMoving] = useState(false)
   const sheetPointerY = useRef<number | null>(null)
   const previousChildPosition = useRef<KakaoMapCoordinate | null>(null)
   const dismissedAutomaticRisks = useRef(new Set<string>())
@@ -143,8 +144,11 @@ export function SafetyAreaScreen() {
 
   const updateChildPosition = (position: KakaoMapCoordinate) => {
     const previous = previousChildPosition.current
-    if (previous && distanceInMeters(previous, position) >= 3)
-      setChildHeading(movementHeading(previous, position) % 360)
+    if (previous) {
+      const moving = distanceInMeters(previous, position) >= 3
+      setIsChildMoving(moving)
+      if (moving) setChildHeading(movementHeading(previous, position) % 360)
+    }
     previousChildPosition.current = position
     setChildPosition(position)
   }
@@ -440,8 +444,9 @@ export function SafetyAreaScreen() {
               childPosition
                 ? {
                     position: childPosition,
-                    imageUrl: childStationary,
+                    imageUrl: childMotionImage(childHeading, isChildMoving),
                     heading: childHeading,
+                    moving: isChildMoving,
                   }
                 : undefined
             }

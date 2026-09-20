@@ -3,7 +3,6 @@ import headerLogo from '@/assets/header-logo.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import riskAreaMarker from '@/assets/icons/risk-area-marker.svg'
-import childStationary from '@/assets/child-motion/child-stationary.svg'
 import { BottomNavigation } from '@/components/BottomNavigation'
 import { PhoneCallButton } from '@/components/CallModal'
 import { NotificationButton } from '@/components/NotificationButton'
@@ -27,6 +26,7 @@ import {
   reportChildLocation,
 } from '@/lib/familyApi'
 import { useAppStore } from '@/store/useAppStore'
+import { childMotionImage } from '@/lib/childMotion'
 
 // 백엔드의 AI 위험구역 시연 데이터가 있는 안양 평촌 인근 좌표입니다.
 const MAP_CENTER = { lat: 37.401, lng: 126.971 }
@@ -111,6 +111,7 @@ export function AiModeScreen() {
     null,
   )
   const [childHeading, setChildHeading] = useState<number | null>(null)
+  const [isChildMoving, setIsChildMoving] = useState(false)
   const sheetPointerY = useRef<number | null>(null)
   const wasSheetDragged = useRef(false)
   const previousChildPosition = useRef<KakaoMapCoordinate | null>(null)
@@ -121,7 +122,9 @@ export function AiModeScreen() {
     const previous = previousChildPosition.current
     if (previous) {
       const movement = movementBetween(previous, position)
-      if (movement.distance >= 3) setChildHeading(movement.heading)
+      const moving = movement.distance >= 3
+      setIsChildMoving(moving)
+      if (moving) setChildHeading(movement.heading)
     }
     previousChildPosition.current = position
     setChildPosition(position)
@@ -256,8 +259,9 @@ export function AiModeScreen() {
             childPosition
               ? {
                   position: childPosition,
-                  imageUrl: childStationary,
+                  imageUrl: childMotionImage(childHeading, isChildMoving),
                   heading: childHeading,
+                  moving: isChildMoving,
                 }
               : undefined
           }

@@ -40,10 +40,8 @@ function NavigationIcon({ src, active }: { src: string; active: boolean }) {
 function NavigationItems({
   active = 'home',
   onMenuClick,
-  childOnly = false,
 }: Pick<BottomNavigationProps, 'active'> & {
   onMenuClick: () => void
-  childOnly?: boolean
 }) {
   const navigate = useNavigate()
   return (
@@ -55,29 +53,22 @@ function NavigationItems({
       >
         <NavigationIcon src={homeIcon} active={active === 'home'} />홈
       </button>
-      {!childOnly && (
-        <>
-          <button
-            type="button"
-            onClick={() => navigate('/safety-area')}
-            className="flex flex-col items-center gap-0.5"
-          >
-            <NavigationIcon
-              src={safeZoneIcon}
-              active={active === 'safe-zone'}
-            />
-            안전 구역 모드
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/ai-mode')}
-            className="flex flex-col items-center gap-0.5"
-          >
-            <NavigationIcon src={aiModeIcon} active={active === 'ai'} />
-            AI 모드
-          </button>
-        </>
-      )}
+      <button
+        type="button"
+        onClick={() => navigate('/safety-area')}
+        className="flex flex-col items-center gap-0.5"
+      >
+        <NavigationIcon src={safeZoneIcon} active={active === 'safe-zone'} />
+        안전 구역 모드
+      </button>
+      <button
+        type="button"
+        onClick={() => navigate('/ai-mode')}
+        className="flex flex-col items-center gap-0.5"
+      >
+        <NavigationIcon src={aiModeIcon} active={active === 'ai'} />
+        AI 모드
+      </button>
       <button
         type="button"
         onClick={onMenuClick}
@@ -203,7 +194,6 @@ export function BottomNavigation({
             <NavigationItems
               active={active}
               onMenuClick={() => setIsMenuOpen(true)}
-              childOnly={childOnly}
             />
           </div>
         </nav>
@@ -221,7 +211,6 @@ export function BottomNavigation({
         <NavigationItems
           active={isMenuOpen ? 'menu' : active}
           onMenuClick={() => setIsMenuOpen(true)}
-          childOnly={childOnly}
         />
       </nav>
     </>
