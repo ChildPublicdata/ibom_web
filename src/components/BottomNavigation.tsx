@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import menuCustomerCenterIcon from '@/assets/icons/menu-customer-center.svg'
 import menuDeviceSettingsIcon from '@/assets/icons/menu-device-settings.svg'
 import menuEditProfileIcon from '@/assets/icons/menu-edit-profile.svg'
@@ -87,6 +88,9 @@ export function BottomNavigation({
   active = 'home',
 }: BottomNavigationProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [developmentFeature, setDevelopmentFeature] = useState<string | null>(
+    null,
+  )
   const navigate = useNavigate()
   const session = getAuthSession()
   const childOnly = !highlighted && session?.role === 'CHILD'
@@ -99,6 +103,29 @@ export function BottomNavigation({
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [isMenuOpen])
+
+  useEffect(() => {
+    if (!developmentFeature) return
+    const timer = window.setTimeout(() => setDevelopmentFeature(null), 2200)
+    return () => window.clearTimeout(timer)
+  }, [developmentFeature])
+
+  const showDevelopmentNotice = (feature: string) => {
+    setIsMenuOpen(false)
+    setDevelopmentFeature(feature)
+  }
+
+  const developmentNotice =
+    developmentFeature &&
+    createPortal(
+      <div
+        role="status"
+        className="fixed left-1/2 top-20 z-[9999] w-max max-w-[calc(100%-40px)] -translate-x-1/2 rounded-full bg-neutral-800 px-4 py-2.5 text-xs text-white shadow-lg"
+      >
+        {developmentFeature} 기능은 아직 개발 중이에요.
+      </div>,
+      document.body,
+    )
 
   const menuPanel = isMenuOpen && (
     <div className="fixed inset-0 z-50 flex justify-center bg-black/45">
@@ -146,9 +173,21 @@ export function BottomNavigation({
                 }}
               />
             )}
-            <MenuCard icon={menuEditProfileIcon} label="정보수정" />
-            <MenuCard icon={menuDeviceSettingsIcon} label="기기설정" />
-            <MenuCard icon={menuCustomerCenterIcon} label="고객센터" />
+            <MenuCard
+              icon={menuEditProfileIcon}
+              label="정보수정"
+              onClick={() => showDevelopmentNotice('정보수정')}
+            />
+            <MenuCard
+              icon={menuDeviceSettingsIcon}
+              label="기기설정"
+              onClick={() => showDevelopmentNotice('기기설정')}
+            />
+            <MenuCard
+              icon={menuCustomerCenterIcon}
+              label="고객센터"
+              onClick={() => showDevelopmentNotice('고객센터')}
+            />
             <MenuCard
               icon={menuUserFeedbackIcon}
               label="이용자 의견"
@@ -179,6 +218,7 @@ export function BottomNavigation({
     return (
       <>
         {menuPanel}
+        {developmentNotice}
         <nav
           className={`relative z-30 flex h-[72px] items-center justify-around bg-transparent text-[11px] text-slate-900 ${className}`}
         >
@@ -200,6 +240,7 @@ export function BottomNavigation({
   return (
     <>
       {menuPanel}
+      {developmentNotice}
       <div aria-hidden="true" className="h-[72px] shrink-0" />
       <nav
         className={`fixed bottom-0 left-1/2 z-[51] flex h-[72px] w-full max-w-[390px] -translate-x-1/2 items-center justify-around border-t border-slate-100 bg-white text-[11px] text-slate-900 ${className}`}

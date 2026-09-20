@@ -325,6 +325,8 @@ export function AiModeScreen() {
             label="사고 지점"
             icon={riskAreaMarker}
             active={showAccidentPoints}
+            activeBackgroundColor="#FF9800"
+            iconClassName="h-10 w-10"
             onToggle={() => setShowAccidentPoints((visible) => !visible)}
           />
         </div>
@@ -461,11 +463,15 @@ function OverlayToggle({
   label,
   icon,
   active,
+  activeBackgroundColor = '#FFD54F',
+  iconClassName = 'h-8 w-8',
   onToggle,
 }: {
   label: string
   icon: string
   active: boolean
+  activeBackgroundColor?: string
+  iconClassName?: string
   onToggle: () => void
 }) {
   return (
@@ -477,21 +483,16 @@ function OverlayToggle({
       className="flex flex-col items-center gap-1 text-[11px] font-medium"
     >
       <span
-        className={`grid h-12 w-12 place-items-center rounded-full shadow-md transition ${active ? 'border-4 border-white bg-white' : 'bg-neutral-200'}`}
+        className={`grid h-12 w-12 place-items-center rounded-full shadow-md transition ${active ? '' : 'bg-neutral-200'}`}
+        style={active ? { backgroundColor: activeBackgroundColor } : undefined}
       >
         <img
           src={icon}
           alt=""
-          className={`h-8 w-8 object-contain transition ${active ? '' : 'grayscale opacity-60'}`}
+          className={`${iconClassName} object-contain transition ${active ? '' : 'grayscale opacity-60'}`}
         />
       </span>
-      <span className="flex items-center gap-1 whitespace-nowrap">
-        {label}
-        <span
-          aria-hidden="true"
-          className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-point-red' : 'bg-neutral-300'}`}
-        />
-      </span>
+      <span className="whitespace-nowrap">{label}</span>
     </button>
   )
 }
