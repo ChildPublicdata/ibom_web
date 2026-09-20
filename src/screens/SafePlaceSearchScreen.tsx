@@ -5,26 +5,36 @@ import searchIcon from '@/assets/icons/search.svg'
 import { PhoneCallButton } from '@/components/CallModal'
 import { NotificationButton } from '@/components/NotificationButton'
 import { searchPlacesByKeyword, type KakaoPlace } from '@/lib/kakaoPlaces'
-import { listSafePlaces, type SafePlace } from '@/lib/safetyApi'
 import { useAppStore } from '@/store/useAppStore'
+
+const RECENT_SEARCHES_KEY = 'ibom-safe-place-recent-searches'
+
+type RecentSearch = Pick<KakaoPlace, 'id' | 'name' | 'address' | 'position'> & {
+  searchedAt: string
+}
+
+type SearchRow = Pick<KakaoPlace, 'id' | 'name' | 'address' | 'position'> & {
+  searchedAt?: string
+}
+
+const loadRecentSearches = (): RecentSearch[] => {
+  try {
+    const stored = window.localStorage.getItem(RECENT_SEARCHES_KEY)
+    return stored ? (JSON.parse(stored) as RecentSearch[]) : []
+  } catch {
+    return []
+  }
+}
 
 export function SafePlaceSearchScreen() {
   const navigate = useNavigate()
   const setSafePlaceDraft = useAppStore((state) => state.setSafePlaceDraft)
-  const setSafePlacePosition = useAppStore(
-    (state) => state.setSafePlacePosition,
-  )
   const [query, setQuery] = useState('')
-  const [savedPlaces, setSavedPlaces] = useState<SafePlace[]>([])
+  const [recentSearches, setRecentSearches] =
+    useState<RecentSearch[]>(loadRecentSearches)
   const [searchResults, setSearchResults] = useState<KakaoPlace[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    listSafePlaces()
-      .then(setSavedPlaces)
-      .catch(() => setError('등록한 장소를 불러오지 못했습니다.'))
-  }, [])
 
   useEffect(() => {
     if (!query.trim()) return
@@ -43,32 +53,44 @@ export function SafePlaceSearchScreen() {
     name: string
     address: string
     position: { lat: number; lng: number }
-    saved: boolean
+    id: string
   }) => {
-    if (place.saved) {
-      setSafePlacePosition(place.position)
-      navigate('/safe-zone-setup')
-      return
-    }
+    const nextRecentSearches = [
+      {
+        id: place.id,
+        name: place.name,
+        address: place.address,
+        position: place.position,
+        searchedAt: new Date().toISOString(),
+      },
+      ...recentSearches.filter((item) => item.id !== place.id),
+    ].slice(0, 10)
+    setRecentSearches(nextRecentSearches)
+    window.localStorage.setItem(
+      RECENT_SEARCHES_KEY,
+      JSON.stringify(nextRecentSearches),
+    )
     setSafePlaceDraft(place)
     navigate('/safe-place-setup')
   }
 
-  const rows = query.trim()
+  const removeRecentSearch = (id: string) => {
+    const nextRecentSearches = recentSearches.filter((item) => item.id !== id)
+    setRecentSearches(nextRecentSearches)
+    window.localStorage.setItem(
+      RECENT_SEARCHES_KEY,
+      JSON.stringify(nextRecentSearches),
+    )
+  }
+
+  const rows: SearchRow[] = query.trim()
     ? searchResults.map((place) => ({
         id: place.id,
         name: place.name,
         address: place.address,
         position: place.position,
-        saved: false,
       }))
-    : savedPlaces.map((place) => ({
-        id: String(place.id),
-        name: place.name,
-        address: place.address,
-        position: { lat: place.lat, lng: place.lon },
-        saved: true,
-      }))
+    : recentSearches
 
   return (
     <main className="flex min-h-[100svh] w-full max-w-[390px] flex-col bg-white text-[#202020]">
@@ -106,24 +128,46 @@ export function SafePlaceSearchScreen() {
         </label>
       </header>
       <section className="flex-1 px-5">
-        {!query && savedPlaces.length > 0 && (
-          <p className="pt-4 text-xs text-slate-400">등록한 안전장소</p>
+        {!query && recentSearches.length > 0 && (
+          <p className="pt-4 text-xs text-slate-400">최근 검색</p>
         )}
         {rows.map((place) => (
-          <button
+          <div
             key={place.id}
-            type="button"
             className="flex min-h-16 w-full items-center border-b border-slate-200 text-left"
-            onClick={() => choosePlace(place)}
           >
-            <span className="mr-4 h-8 w-8 shrink-0 rounded-full bg-[#f5f5f5]" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm">{place.name}</span>
-              <span className="mt-1 block truncate text-[10px] text-slate-400">
-                {place.address}
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 items-center text-left"
+              onClick={() => choosePlace(place)}
+            >
+              <span className="mr-4 h-8 w-8 shrink-0 rounded-full bg-[#f5f5f5]" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm">{place.name}</span>
+                <span className="mt-1 block truncate text-[10px] text-slate-400">
+                  {place.address}
+                </span>
               </span>
-            </span>
-          </button>
+            </button>
+            {place.searchedAt && (
+              <>
+                <time className="shrink-0 text-[10px] text-slate-400">
+                  {new Intl.DateTimeFormat('ko-KR', {
+                    month: '2-digit',
+                    day: '2-digit',
+                  }).format(new Date(place.searchedAt))}
+                </time>
+                <button
+                  type="button"
+                  aria-label={`${place.name} 검색 기록 삭제`}
+                  onClick={() => removeRecentSearch(place.id)}
+                  className="ml-3 px-1 text-lg font-light text-slate-400"
+                >
+                  ×
+                </button>
+              </>
+            )}
+          </div>
         ))}
         {isLoading && (
           <p className="pt-16 text-center text-sm text-slate-400">검색 중...</p>

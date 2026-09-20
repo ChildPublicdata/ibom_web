@@ -144,7 +144,7 @@ export function BottomNavigation({
                   label={'안전장소\n설정'}
                   onClick={() => {
                     setIsMenuOpen(false)
-                    navigate('/safe-places')
+                    navigate('/safe-place-setup')
                   }}
                 />
                 <MenuCard icon={menuChildLocationIcon} label="아이 위치" />
