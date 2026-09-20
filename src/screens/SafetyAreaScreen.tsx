@@ -510,7 +510,7 @@ export function SafetyAreaScreen() {
             className={`absolute bottom-4 left-4 right-4 z-20 rounded-2xl px-4 py-3 shadow-lg ${isOutsideSafeZone ? 'bg-main-orange' : 'bg-main-yellow'}`}
           >
             <div className="flex items-center gap-3 text-white">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-sub-leaf">
+              <span className="grid h-12 w-12 shrink-0 place-items-center">
                 <img
                   src={
                     isOutsideSafeZone
