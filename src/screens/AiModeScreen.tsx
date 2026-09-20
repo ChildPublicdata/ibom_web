@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import headerLogo from '@/assets/header-logo.svg'
+import dangerAreaStatusIcon from '@/assets/icons/danger-area-status.svg'
 import homeChildAvatar from '@/assets/icons/home-child-avatar.svg'
 import homeMyLocationIcon from '@/assets/icons/home-my-location.svg'
 import riskAreaMarker from '@/assets/icons/risk-area-marker.svg'
@@ -97,6 +98,8 @@ function movementBetween(
 
 export function AiModeScreen() {
   const [showLegend, setShowLegend] = useState(false)
+  const [showRiskAreas, setShowRiskAreas] = useState(true)
+  const [showAccidentPoints, setShowAccidentPoints] = useState(true)
   const [isSheetExpanded, setIsSheetExpanded] = useState(false)
   const [selectedArea, setSelectedArea] = useState<RiskZone | null>(null)
   const [mapCenter, setMapCenter] = useState<KakaoMapCoordinate>(MAP_CENTER)
@@ -226,16 +229,17 @@ export function AiModeScreen() {
   }, [mapBounds])
 
   const markers = useMemo(
-    () => [
-      ...zones.map((zone) => ({
+    () =>
+      showRiskAreas
+        ? zones.map((zone) => ({
         id: zone.zoneId,
         position: { lat: zone.lat, lng: zone.lng },
         imageUrl: riskAreaMarker,
         imageSize: { width: 42, height: 42 },
         onClick: () => setSelectedArea(zone),
-      })),
-    ],
-    [zones],
+          }))
+        : [],
+    [showRiskAreas, zones],
   )
 
   return (
@@ -265,21 +269,29 @@ export function AiModeScreen() {
                 }
               : undefined
           }
-          circles={zones.map((zone) => ({
-            center: { lat: zone.lat, lng: zone.lng },
-            radius: zone.radiusM,
-            strokeColor: zoneColor(zone.grade),
-            strokeOpacity: 0.95,
-            fillColor: zoneColor(zone.grade),
-            fillOpacity: 0.35,
-          }))}
-          rectangles={grids.map((grid) => ({
-            ...gridBounds(grid),
-            strokeColor: gradeStyles[gridGradeNumber(grid) - 1].color,
-            strokeOpacity: 0.65,
-            fillColor: gradeStyles[gridGradeNumber(grid) - 1].color,
-            fillOpacity: gridGradeNumber(grid) === 1 ? 0.28 : 0.18,
-          }))}
+          circles={
+            showRiskAreas
+              ? zones.map((zone) => ({
+                  center: { lat: zone.lat, lng: zone.lng },
+                  radius: zone.radiusM,
+                  strokeColor: zoneColor(zone.grade),
+                  strokeOpacity: 0.95,
+                  fillColor: zoneColor(zone.grade),
+                  fillOpacity: 0.35,
+                }))
+              : []
+          }
+          rectangles={
+            showAccidentPoints
+              ? grids.map((grid) => ({
+                  ...gridBounds(grid),
+                  strokeColor: gradeStyles[gridGradeNumber(grid) - 1].color,
+                  strokeOpacity: 0.65,
+                  fillColor: gradeStyles[gridGradeNumber(grid) - 1].color,
+                  fillOpacity: gridGradeNumber(grid) === 1 ? 0.28 : 0.18,
+                }))
+              : []
+          }
           onBoundsChange={setMapBounds}
         />
 
@@ -303,6 +315,18 @@ export function AiModeScreen() {
             </span>
             내 위치
           </button>
+          <OverlayToggle
+            label="위험 영역"
+            icon={dangerAreaStatusIcon}
+            active={showRiskAreas}
+            onToggle={() => setShowRiskAreas((visible) => !visible)}
+          />
+          <OverlayToggle
+            label="사고 지점"
+            icon={riskAreaMarker}
+            active={showAccidentPoints}
+            onToggle={() => setShowAccidentPoints((visible) => !visible)}
+          />
         </div>
 
         <button
@@ -430,6 +454,45 @@ export function AiModeScreen() {
       )}
       <BottomNavigation active="ai" />
     </main>
+  )
+}
+
+function OverlayToggle({
+  label,
+  icon,
+  active,
+  onToggle,
+}: {
+  label: string
+  icon: string
+  active: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`${label} ${active ? '끄기' : '켜기'}`}
+      aria-pressed={active}
+      onClick={onToggle}
+      className="flex flex-col items-center gap-1 text-[11px] font-medium"
+    >
+      <span
+        className={`grid h-12 w-12 place-items-center rounded-full shadow-md transition ${active ? 'border-4 border-white bg-white' : 'bg-neutral-200'}`}
+      >
+        <img
+          src={icon}
+          alt=""
+          className={`h-8 w-8 object-contain transition ${active ? '' : 'grayscale opacity-60'}`}
+        />
+      </span>
+      <span className="flex items-center gap-1 whitespace-nowrap">
+        {label}
+        <span
+          aria-hidden="true"
+          className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-point-red' : 'bg-neutral-300'}`}
+        />
+      </span>
+    </button>
   )
 }
 

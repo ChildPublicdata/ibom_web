@@ -16,10 +16,12 @@ type Feedback = {
   title: string
   content: string
   link?: string
+  imageName?: string
+  imageData?: string
   createdAt: string
 }
 
-type ScreenMode = 'list' | 'compose' | 'complete'
+type ScreenMode = 'list' | 'compose' | 'detail' | 'complete'
 
 const storageKey = () =>
   `ibom:${getAuthSession()?.userId ?? 'guest'}:user-feedback`
@@ -46,6 +48,9 @@ export function UserFeedbackScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<ScreenMode>('list')
   const [feedback, setFeedback] = useState<Feedback[]>(loadFeedback)
+  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(
+    null,
+  )
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [link, setLink] = useState('')
@@ -74,6 +79,8 @@ export function UserFeedbackScreen() {
         title: title.trim(),
         content: content.trim(),
         link: link.trim() || undefined,
+        imageName: imageName || undefined,
+        imageData: imagePreview || undefined,
         createdAt: new Date().toISOString(),
       },
       ...feedback,
@@ -89,8 +96,15 @@ export function UserFeedbackScreen() {
     setFeedback(next)
   }
 
+  const openFeedback = (item: Feedback) => {
+    setSelectedFeedback(item)
+    setMode('detail')
+  }
+
   return (
-    <main className="relative flex min-h-[100svh] w-full max-w-[390px] flex-col overflow-hidden bg-white text-neutral-950">
+    <main
+      className={`relative flex min-h-[100svh] w-full max-w-[390px] flex-col overflow-hidden text-neutral-950 ${mode === 'detail' ? 'bg-[#fffaf0]' : 'bg-white'}`}
+    >
       {mode === 'complete' ? (
         <section className="flex min-h-0 flex-1 flex-col px-5 pb-5 text-center">
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
@@ -118,7 +132,9 @@ export function UserFeedbackScreen() {
         </section>
       ) : (
         <>
-          <header className="relative z-10 bg-white px-5 pb-3 pt-5">
+          <header
+            className={`relative z-10 px-5 pb-3 pt-5 ${mode === 'detail' ? 'bg-[#fffaf0]' : 'bg-white'}`}
+          >
             {mode === 'list' && (
               <div className="flex h-10 items-center justify-between">
                 <img src={headerLogo} alt="아이봄" className="h-7 w-auto" />
@@ -133,7 +149,9 @@ export function UserFeedbackScreen() {
                 type="button"
                 aria-label="뒤로가기"
                 onClick={() =>
-                  mode === 'compose' ? setMode('list') : navigate(-1)
+                  mode === 'compose' || mode === 'detail'
+                    ? setMode('list')
+                    : navigate(-1)
                 }
                 className="mr-5 text-2xl font-light leading-none text-slate-600"
               >
@@ -243,6 +261,8 @@ export function UserFeedbackScreen() {
                 사용자 의견 전달하기
               </button>
             </section>
+          ) : mode === 'detail' && selectedFeedback ? (
+            <FeedbackDetail feedback={selectedFeedback} />
           ) : (
             <section className="relative min-h-0 flex-1 px-5 py-5">
               {feedback.length === 0 ? (
@@ -266,9 +286,15 @@ export function UserFeedbackScreen() {
                   {feedback.map((item) => (
                     <li
                       key={item.id}
-                      className="rounded-xl border border-neutral-200 px-4 py-3 shadow-sm"
+                      className="relative rounded-xl border border-neutral-200 px-4 py-3 shadow-sm"
                     >
-                      <div className="flex items-start gap-3">
+                      <button
+                        type="button"
+                        aria-label={`${item.title} 의견 보기`}
+                        onClick={() => openFeedback(item)}
+                        className="absolute inset-0 rounded-xl"
+                      />
+                      <div className="pointer-events-none relative flex items-start gap-3">
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs font-semibold">
                             {item.title}
@@ -282,7 +308,7 @@ export function UserFeedbackScreen() {
                           aria-label="의견 삭제"
                           title="삭제"
                           onClick={() => removeFeedback(item.id)}
-                          className="px-1 text-xl leading-none"
+                          className="pointer-events-auto relative z-10 px-1 text-xl leading-none"
                         >
                           ⋮
                         </button>
@@ -307,7 +333,50 @@ export function UserFeedbackScreen() {
           )}
         </>
       )}
-      {mode === 'list' && <BottomNavigation active="menu" />}
+      {(mode === 'list' || mode === 'detail') && (
+        <BottomNavigation active="menu" />
+      )}
     </main>
+  )
+}
+
+function FeedbackDetail({ feedback }: { feedback: Feedback }) {
+  return (
+    <section className="min-h-0 flex-1 overflow-y-auto bg-[#fffaf0] px-3 pb-5 pt-4">
+      <div className="rounded-2xl bg-main-yellow px-4 py-4 text-xs font-medium shadow-sm">
+        {feedback.title}
+      </div>
+      <div className="mt-2 flex min-h-[260px] flex-col rounded-2xl border border-main-yellow bg-white p-4 shadow-[0_2px_5px_rgba(15,23,42,0.10)]">
+        <p className="whitespace-pre-wrap text-xs leading-5">
+          {feedback.content}
+        </p>
+        {feedback.imageData && (
+          <img
+            src={feedback.imageData}
+            alt={feedback.imageName || '첨부 이미지'}
+            className="mt-4 max-h-52 w-full rounded-lg object-cover"
+          />
+        )}
+        <div className="mt-auto flex items-center gap-4 pt-4 text-neutral-500">
+          {feedback.imageData && (
+            <img src={feedbackImageIcon} alt="첨부 이미지" className="h-5 w-5" />
+          )}
+          {feedback.link && (
+            <a
+              href={feedback.link}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="첨부 링크 열기"
+              className="grid h-7 w-7 place-items-center"
+            >
+              <img src={feedbackLinkIcon} alt="" className="h-5 w-5" />
+            </a>
+          )}
+          <span className="ml-auto text-[10px] text-neutral-400">
+            {feedback.content.length}/1500자
+          </span>
+        </div>
+      </div>
+    </section>
   )
 }
